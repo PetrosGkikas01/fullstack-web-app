@@ -32,3 +32,52 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+exports.updateProfile = async (req, res) => {
+  const { id } = req.user; // από token middleware
+  const { address, contact_email, mobile_phone, landline_phone } = req.body;
+
+  const fields = [];
+  const values = [];
+
+  if (address !== undefined) {
+    fields.push("address = ?");
+    values.push(address);
+  }
+  if (contact_email !== undefined) {
+    fields.push("contact_email = ?");
+    values.push(contact_email);
+  }
+  if (mobile_phone !== undefined) {
+    fields.push("mobile_phone = ?");
+    values.push(mobile_phone);
+  }
+  if (landline_phone !== undefined) {
+    fields.push("landline_phone = ?");
+    values.push(landline_phone);
+  }
+
+  if (fields.length === 0)
+    return res.status(400).json({ error: "Δεν δόθηκαν στοιχεία προς ενημέρωση" });
+
+  values.push(id);
+
+  const sql = `UPDATE Student SET ${fields.join(", ")} WHERE id = ?`;
+  try {
+    await db.query(sql, values);
+    res.json({ message: "Το προφίλ ενημερώθηκε επιτυχώς." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+exports.getMe = async (req, res) => {
+  const { id } = req.user;
+
+  try {
+    const [rows] = await db.query("SELECT id, name, email, address, contact_email, mobile_phone, landline_phone FROM Student WHERE id = ?", [id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Δεν βρέθηκε ο φοιτητής" });
+
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

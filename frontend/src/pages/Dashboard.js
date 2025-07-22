@@ -32,20 +32,26 @@ const Dashboard = () => {
           <ul className="menu-list">
             {auth.role === "student" && (
               <>
-                <li onClick={() => {navigate("/my-declarations"); setMenuOpen(false);}}>Οι Δηλώσεις μου</li>
-                <li onClick={() => {navigate("/available-theses"); setMenuOpen(false);}}>Διαθέσιμες Διπλωματικές</li>
+                <li onClick={() => {navigate("/my-declarations"); setMenuOpen(false);}}>Προβολή θέματος</li>
+                <li onClick={() => {navigate("/update-profile"); setMenuOpen(false);}}>Επεξεργασία Προφίλ</li>
+                <li onClick={() => {navigate("/available-theses"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>
             )}
             {auth.role === "professor" && (
               <>
-                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Οι Διπλωματικές μου</li>
-                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Νέα Ανάθεση</li>
+                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή και Δημιουργία θεμάτων προς ανάθεση</li>
+                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Αρχική ανάθεση θέματος σε φοιτητή</li>
+                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή λίστας διπλωματικών</li>
+                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Προβολή προσκλήσεων συμμετοχής σε τριμελή</li>
+                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή στατιστικών</li>
+                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Διαχείριση διπλωματικών εργασιών</li>
               </>
             )}
             {auth.role === "secretary" && (
               <>
-                <li onClick={() => {navigate("/manage-users"); setMenuOpen(false);}}>Διαχείριση Χρηστών</li>
-                <li onClick={() => {navigate("/reports"); setMenuOpen(false);}}>Αναφορές</li>
+                <li onClick={() => {navigate("/manage-users"); setMenuOpen(false);}}>Προβολή ΔΕ</li>
+                <li onClick={() => {navigate("/reports"); setMenuOpen(false);}}>Εισαγωγή δεδομένων</li>
+                <li onClick={() => {navigate("/reports"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>
             )}
           </ul>

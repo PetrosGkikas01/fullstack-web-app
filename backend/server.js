@@ -19,7 +19,7 @@ app.use("/api/student", (req, res, next) => {
 });
 app.use("/api/student", StudentRoutes);
 
-app.use("/api/professors", ProfessorRoutes);
+app.use("/api/professor", ProfessorRoutes);
 app.use("/api/diplomatikh-ergasia", DiplomatikhErgasiaRoutes);
 app.use("/api/announcement", AnnouncementRoutes);
 

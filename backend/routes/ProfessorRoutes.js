@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router(); 
-const professorController = require("../controllers/ProfessorController");
+const ProfessorController = require("../controllers/ProfessorController");
 
 router.get("/", (req, res) => {
   res.json({ message: "Professor API working ✅" });
 });
 
-router.post("/register", professorController.register);
-router.post("/login", professorController.login);
-router.post("/create-topic", professorController.createTopic);
+router.post("/register", ProfessorController.register);
+router.post("/login", ProfessorController.login);
 
 module.exports = router;

@@ -4,7 +4,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./routes/PrivateRoute";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
-
+import UpdateProfile from "./pages/UpdateProfile";
 function App() {
   return (
     <BrowserRouter>
@@ -20,6 +20,7 @@ function App() {
           
         }
       />
+      <Route path="/update-profile" element={<UpdateProfile />} />
     </Routes>
     </BrowserRouter>
   );

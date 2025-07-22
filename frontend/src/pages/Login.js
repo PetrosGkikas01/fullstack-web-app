@@ -3,18 +3,28 @@ import "./Login.css";
 import { useState, useContext } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { loginStudent } from "../api/Student";
+import { loginProfessor } from "../api/Professor";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "", role: "student" });
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const mutation = useMutation({
-    mutationFn: loginStudent,
+   const mutation = useMutation({
+    mutationFn: async ({ email, password, role }) => {
+      switch (role) {
+        case "student":
+          return loginStudent({ email, password });
+        case "professor":
+          return loginProfessor({ email, password });
+        default:
+          throw new Error("Μη υποστηριζόμενος ρόλος");
+      }
+    },
     onSuccess: (data) => {
-      login(data.token, "student");
+      login(data.token, form.role);
       navigate("/dashboard");
     },
     onError: (err) => {
@@ -24,10 +34,14 @@ const Login = () => {
   });
 
   return (
-    <form
+     <form
       className="login-form"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!form.email || !form.password) {
+          alert("Συμπλήρωσε όλα τα πεδία");
+          return;
+        }
         mutation.mutate(form);
       }}
     >
@@ -51,6 +65,42 @@ const Login = () => {
         value={form.password}
         onChange={(e) => setForm({ ...form, password: e.target.value })}
       />
+      <div className="role-selection">
+  <label>
+    <input
+      type="radio"
+      name="role"
+      value="student"
+      checked={form.role === "student"}
+      onChange={(e) => setForm({ ...form, role: e.target.value })}
+      disabled={mutation.isLoading}
+    />
+    Φοιτητής
+  </label>
+  <label>
+    <input
+      type="radio"
+      name="role"
+      value="professor"
+      checked={form.role === "professor"}
+      onChange={(e) => setForm({ ...form, role: e.target.value })}
+      disabled={mutation.isLoading}
+    />
+    Καθηγητής
+  </label>
+  <label>
+    <input
+      type="radio"
+      name="role"
+      value="secretary"
+      checked={form.role === "secretary"}
+      onChange={(e) => setForm({ ...form, role: e.target.value })}
+      disabled={mutation.isLoading}
+    />
+    Γραμματεία
+  </label>
+</div>
+
       <button type="submit" disabled={mutation.isLoading}>
         {mutation.isLoading ? "Σύνδεση..." : "Σύνδεση"}
       </button>
