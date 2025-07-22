@@ -1,0 +1,133 @@
+.dashboard-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-container h2 {
+  color: #000000;
+  margin-bottom: 20px;
+}
+
+.dashboard-btn {
+  margin-top: 20px; 
+  padding: 12px 30px;
+  font-size: 18px;
+  background-color: #ffb74c;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.dashboard-logo {
+  width: 300px; 
+  height: auto;
+  
+}
+
+.announcements-section {
+  margin-top: 40px;
+  text-align: left;
+  width: 80%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.announcement-section h3 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #0077cc;
+  padding-bottom: 5px;
+}
+
+.announcement-list {
+  list-style: none;
+  padding: 0;
+}
+
+.announcement-item {
+  background-color: #f4f6fa;
+  margin: 10px 0;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.announcement-item:hover {
+  background-color: #e0efff;
+  transform: scale(1.02);
+}
+
+/* Πάνω δεξιά κουμπί */
+.menu-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: #0055aa;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+  z-index: 1001;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -250px;
+  width: 250px;
+  height: 100%;
+  background-color: #f3f3f3;
+  padding: 0px;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+  transition: left 0.3s ease-in-out;
+  z-index: 1000;
+}
+
+.sidebar.open {
+  left: 0;
+}
+
+.sidebar .close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  cursor: pointer;
+}
+
+.sidebar h3 {
+  margin-top: 40px;
+}
+
+.menu-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.menu-list li {
+  margin: 10px 0;
+  cursor: pointer;
+  font-size: 16px;
+  color: #0055aa;
+}
+
+.menu-list li:hover {
+  text-decoration: underline;
+}
