@@ -2,11 +2,17 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 require("dotenv").config();
-
+const path = require("path");
 const app = express();
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
-app.use(express.static("uploads")); 
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
 
 // Routes
 const StudentRoutes = require("./routes/StudentRoutes");
@@ -18,7 +24,6 @@ app.use("/api/student", (req, res, next) => {
   next();
 });
 app.use("/api/student", StudentRoutes);
-
 app.use("/api/professor", ProfessorRoutes);
 app.use("/api/diplomatikh-ergasia", DiplomatikhErgasiaRoutes);
 app.use("/api/announcement", AnnouncementRoutes);

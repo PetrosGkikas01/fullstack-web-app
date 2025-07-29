@@ -5,6 +5,9 @@ import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./routes/PrivateRoute";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UpdateProfile from "./pages/UpdateProfile";
+import ProfessorTopics from "./pages/ProfessorTopics";
+import CreateTopic from "./pages/CreateTopic";
+import EditTopic from "./pages/EditTopic";
 function App() {
   return (
     <BrowserRouter>
@@ -21,6 +24,9 @@ function App() {
         }
       />
       <Route path="/update-profile" element={<UpdateProfile />} />
+      <Route path="/professor/topics" element={<ProfessorTopics />} />
+      <Route path="/professor/topics/:id/edit" element={<EditTopic />} />
+      <Route path="/create-topic" element={<CreateTopic />} />
     </Routes>
     </BrowserRouter>
   );

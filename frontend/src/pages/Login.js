@@ -1,9 +1,9 @@
 import "./Login.css";
-
 import { useState, useContext } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { loginStudent } from "../api/Student";
 import { loginProfessor } from "../api/Professor";
+// import { loginSecretary } from "../api/Secretary"; // Αν φτιάξεις API για γραμματεία
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -12,19 +12,21 @@ const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-   const mutation = useMutation({
+  const mutation = useMutation({
     mutationFn: async ({ email, password, role }) => {
       switch (role) {
         case "student":
           return loginStudent({ email, password });
         case "professor":
           return loginProfessor({ email, password });
+        // case "secretary":
+        //   return loginSecretary({ email, password });
         default:
           throw new Error("Μη υποστηριζόμενος ρόλος");
       }
     },
     onSuccess: (data) => {
-      login(data.token, form.role);
+      login(data.token, form.role); // Αποθήκευση στο context & localStorage
       navigate("/dashboard");
     },
     onError: (err) => {
@@ -33,12 +35,16 @@ const Login = () => {
     },
   });
 
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
   return (
-     <form
+    <form
       className="login-form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!form.email || !form.password) {
+        if (!form.email || !form.password || !form.role) {
           alert("Συμπλήρωσε όλα τα πεδία");
           return;
         }
@@ -52,54 +58,57 @@ const Login = () => {
           className="login-logo"
         />
       </div>
+
       <input
+        type="email"
         name="email"
         placeholder="Email"
         value={form.email}
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
+        onChange={handleChange}
       />
       <input
-        name="password"
         type="password"
+        name="password"
         placeholder="Κωδικός"
         value={form.password}
-        onChange={(e) => setForm({ ...form, password: e.target.value })}
+        onChange={handleChange}
       />
+
       <div className="role-selection">
-  <label>
-    <input
-      type="radio"
-      name="role"
-      value="student"
-      checked={form.role === "student"}
-      onChange={(e) => setForm({ ...form, role: e.target.value })}
-      disabled={mutation.isLoading}
-    />
-    Φοιτητής
-  </label>
-  <label>
-    <input
-      type="radio"
-      name="role"
-      value="professor"
-      checked={form.role === "professor"}
-      onChange={(e) => setForm({ ...form, role: e.target.value })}
-      disabled={mutation.isLoading}
-    />
-    Καθηγητής
-  </label>
-  <label>
-    <input
-      type="radio"
-      name="role"
-      value="secretary"
-      checked={form.role === "secretary"}
-      onChange={(e) => setForm({ ...form, role: e.target.value })}
-      disabled={mutation.isLoading}
-    />
-    Γραμματεία
-  </label>
-</div>
+        <label>
+          <input
+            type="radio"
+            name="role"
+            value="student"
+            checked={form.role === "student"}
+            onChange={handleChange}
+            disabled={mutation.isLoading}
+          />
+          Φοιτητής
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="role"
+            value="professor"
+            checked={form.role === "professor"}
+            onChange={handleChange}
+            disabled={mutation.isLoading}
+          />
+          Καθηγητής
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="role"
+            value="secretary"
+            checked={form.role === "secretary"}
+            onChange={handleChange}
+            disabled={mutation.isLoading}
+          />
+          Γραμματεία
+        </label>
+      </div>
 
       <button type="submit" disabled={mutation.isLoading}>
         {mutation.isLoading ? "Σύνδεση..." : "Σύνδεση"}

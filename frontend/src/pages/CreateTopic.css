@@ -1,0 +1,83 @@
+.create-topic-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.create-topic-container h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.create-topic-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+.create-topic-container input[type="text"],
+.create-topic-container textarea,
+.create-topic-container input[type="file"] {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: white;
+}
+
+.create-topic-container textarea {
+  height: 200px;
+  resize: none;
+  overflow: auto;
+}
+
+.create-topic-container input:focus,
+.create-topic-container textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.2);
+  outline: none;
+}
+
+.create-topic-container button {
+  padding: 8px;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.create-topic-container button:hover {
+  background-color: #0056b3;
+}
+.back-button { 
+  margin-bottom: 0.2rem;
+  align-self: flex-start;
+  padding: 8px 16px;
+  font-size: 0.95rem;
+  background-color: #e0e0e0;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: #d0d0d0;
+}
+.button-row {
+  display: flex;
+  justify-content: center;
+  gap: 15rem; 
+  margin-top: 2%;
+}

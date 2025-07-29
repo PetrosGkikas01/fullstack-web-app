@@ -39,12 +39,22 @@ const Dashboard = () => {
             )}
             {auth.role === "professor" && (
               <>
-                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή και Δημιουργία θεμάτων προς ανάθεση</li>
-                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Αρχική ανάθεση θέματος σε φοιτητή</li>
-                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή λίστας διπλωματικών</li>
-                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Προβολή προσκλήσεων συμμετοχής σε τριμελή</li>
-                <li onClick={() => {navigate("/my-theses"); setMenuOpen(false);}}>Προβολή στατιστικών</li>
-                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>Διαχείριση διπλωματικών εργασιών</li>
+                <li onClick={() => {navigate("/professor/topics"); setMenuOpen(false);}}>
+                  Προβολή & Διαχείριση Θεμάτων
+                </li>
+                <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>
+                  Ανάθεση Θέματος σε Φοιτητή
+                </li>
+                <li onClick={() => {navigate("/committee-invitations"); setMenuOpen(false);}}>
+                  Προσκλήσεις σε Τριμελή Επιτροπή
+                </li>
+                <li onClick={() => {navigate("/statistics"); setMenuOpen(false);}}>
+                  Προβολή Στατιστικών
+                </li>
+                <li onClick={() => {navigate("/manage-theses"); setMenuOpen(false);}}>
+                  Διαχείριση Διπλωματικών Εργασιών
+                </li>
+
               </>
             )}
             {auth.role === "secretary" && (
