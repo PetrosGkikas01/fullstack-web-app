@@ -1,68 +1,263 @@
-CREATE TABLE Student (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
-    password VARCHAR(255),
-    student_number VARCHAR(50),
-    department VARCHAR(100),
-    etos INT
-);
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Εξυπηρετητής: 127.0.0.1
+-- Χρόνος δημιουργίας: 07 Αυγ 2025 στις 16:57:49
+-- Έκδοση διακομιστή: 10.4.32-MariaDB
+-- Έκδοση PHP: 8.2.12
 
-CREATE TABLE Professor (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
-    password VARCHAR(255),
-    specialty VARCHAR(100),
-    is_admin BOOLEAN DEFAULT FALSE
-);
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
-CREATE TABLE Secretary (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
-    password VARCHAR(255)
-);
 
-CREATE TABLE DiplomatikhErgasia (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    description TEXT,
-    professor_id INT,
-    student_id INT UNIQUE,
-    status VARCHAR(20),
-    FOREIGN KEY (professor_id) REFERENCES Professor(id),
-    FOREIGN KEY (student_id) REFERENCES Student(id),
-    CHECK (status IN ('available', 'in_progress', 'completed'))
-);
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
-CREATE TABLE DiplomatikhErgasiaRequest (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT,
-    status VARCHAR(20),
-    DiplomatikhErgasia_id INT,
-    requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_id) REFERENCES Student(id),
-    FOREIGN KEY (DiplomatikhErgasia_id) REFERENCES DiplomatikhErgasia(id),
-    CHECK (status IN ('pending', 'approved', 'rejected'))
-);
+--
+-- Βάση δεδομένων: `mydb`
+--
 
-CREATE TABLE Announcement (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255),
-    body TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by INT,
-    FOREIGN KEY (created_by) REFERENCES Professor(id)
-);
+-- --------------------------------------------------------
 
-CREATE TABLE FileUpload (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    file_name VARCHAR(255),
-    file_path VARCHAR(255),
-    uploaded_by INT,
-    DiplomatikhErgasia_id INT,
-    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uploaded_by) REFERENCES Student(id),
-    FOREIGN KEY (DiplomatikhErgasia_id) REFERENCES DiplomatikhErgasia(id)
-);
+--
+-- Δομή πίνακα για τον πίνακα `announcement`
+--
+
+CREATE TABLE `announcement` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `body` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `created_by` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `diplomatikhergasia`
+--
+
+CREATE TABLE `diplomatikhergasia` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `professor_id` int(11) DEFAULT NULL,
+  `student_id` int(11) DEFAULT NULL,
+  `status` varchar(20) DEFAULT NULL,
+  `pdf_file` varchar(255) NOT NULL
+) ;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `diplomatikhergasiarequest`
+--
+
+CREATE TABLE `diplomatikhergasiarequest` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) DEFAULT NULL,
+  `status` varchar(20) DEFAULT NULL,
+  `DiplomatikhErgasia_id` int(11) DEFAULT NULL,
+  `requested_at` datetime DEFAULT current_timestamp()
+) ;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `fileupload`
+--
+
+CREATE TABLE `fileupload` (
+  `id` int(11) NOT NULL,
+  `file_name` varchar(255) DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT NULL,
+  `uploaded_by` int(11) DEFAULT NULL,
+  `DiplomatikhErgasia_id` int(11) DEFAULT NULL,
+  `uploaded_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `professor`
+--
+
+CREATE TABLE `professor` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `specialty` varchar(100) DEFAULT NULL,
+  `is_admin` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `secretary`
+--
+
+CREATE TABLE `secretary` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Δομή πίνακα για τον πίνακα `student`
+--
+
+CREATE TABLE `student` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `student_number` varchar(50) DEFAULT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `etos` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Ευρετήρια για άχρηστους πίνακες
+--
+
+--
+-- Ευρετήρια για πίνακα `announcement`
+--
+ALTER TABLE `announcement`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `created_by` (`created_by`);
+
+--
+-- Ευρετήρια για πίνακα `diplomatikhergasia`
+--
+ALTER TABLE `diplomatikhergasia`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `student_id` (`student_id`),
+  ADD KEY `professor_id` (`professor_id`);
+
+--
+-- Ευρετήρια για πίνακα `diplomatikhergasiarequest`
+--
+ALTER TABLE `diplomatikhergasiarequest`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `student_id` (`student_id`),
+  ADD KEY `DiplomatikhErgasia_id` (`DiplomatikhErgasia_id`);
+
+--
+-- Ευρετήρια για πίνακα `fileupload`
+--
+ALTER TABLE `fileupload`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `uploaded_by` (`uploaded_by`),
+  ADD KEY `DiplomatikhErgasia_id` (`DiplomatikhErgasia_id`);
+
+--
+-- Ευρετήρια για πίνακα `professor`
+--
+ALTER TABLE `professor`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Ευρετήρια για πίνακα `secretary`
+--
+ALTER TABLE `secretary`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Ευρετήρια για πίνακα `student`
+--
+ALTER TABLE `student`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- AUTO_INCREMENT για άχρηστους πίνακες
+--
+
+--
+-- AUTO_INCREMENT για πίνακα `announcement`
+--
+ALTER TABLE `announcement`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `diplomatikhergasia`
+--
+ALTER TABLE `diplomatikhergasia`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `diplomatikhergasiarequest`
+--
+ALTER TABLE `diplomatikhergasiarequest`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `fileupload`
+--
+ALTER TABLE `fileupload`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `professor`
+--
+ALTER TABLE `professor`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `secretary`
+--
+ALTER TABLE `secretary`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT για πίνακα `student`
+--
+ALTER TABLE `student`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Περιορισμοί για άχρηστους πίνακες
+--
+
+--
+-- Περιορισμοί για πίνακα `announcement`
+--
+ALTER TABLE `announcement`
+  ADD CONSTRAINT `announcement_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `professor` (`id`);
+
+--
+-- Περιορισμοί για πίνακα `diplomatikhergasia`
+--
+ALTER TABLE `diplomatikhergasia`
+  ADD CONSTRAINT `diplomatikhergasia_ibfk_1` FOREIGN KEY (`professor_id`) REFERENCES `professor` (`id`),
+  ADD CONSTRAINT `diplomatikhergasia_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `student` (`id`);
+
+--
+-- Περιορισμοί για πίνακα `diplomatikhergasiarequest`
+--
+ALTER TABLE `diplomatikhergasiarequest`
+  ADD CONSTRAINT `diplomatikhergasiarequest_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `student` (`id`),
+  ADD CONSTRAINT `diplomatikhergasiarequest_ibfk_2` FOREIGN KEY (`DiplomatikhErgasia_id`) REFERENCES `diplomatikhergasia` (`id`);
+
+--
+-- Περιορισμοί για πίνακα `fileupload`
+--
+ALTER TABLE `fileupload`
+  ADD CONSTRAINT `fileupload_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `student` (`id`),
+  ADD CONSTRAINT `fileupload_ibfk_2` FOREIGN KEY (`DiplomatikhErgasia_id`) REFERENCES `diplomatikhergasia` (`id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
