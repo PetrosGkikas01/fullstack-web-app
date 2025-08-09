@@ -51,4 +51,7 @@ router.put("/topics/:id", verifyToken, (req, res, next) => {
   });
 }, ProfessorController.updateTopic);
 
+router.post("/assign", verifyToken, ProfessorController.assignTopicToStudent);
+
+
 module.exports = router;

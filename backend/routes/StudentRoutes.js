@@ -11,4 +11,15 @@ router.post("/register", StudentController.register);
 router.post("/login", StudentController.login);
 router.put("/update-profile", auth.verifyToken, StudentController.updateProfile);
 router.get("/me", auth.verifyToken, StudentController.getMe);
+router.get("/all", auth.verifyToken, async (req, res) => {
+  try {
+    const [rows] = await require("../config/db").query(
+      "SELECT id, name, email FROM student"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Σφάλμα λήψης φοιτητών:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+});
 module.exports = router;

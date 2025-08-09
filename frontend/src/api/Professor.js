@@ -45,3 +45,17 @@ export const updateTopic = async (id, data) => {
   });
   return res.data;
 };
+
+export const assignTopicToStudent = async (topic_id, student_id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.post(
+    "/api/professor/assign-topic",
+    { topic_id, student_id },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return res.data;
+};

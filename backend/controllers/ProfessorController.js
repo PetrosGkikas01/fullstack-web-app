@@ -152,3 +152,31 @@ exports.updateTopic = async (req, res) => {
     res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση." });
   }
 };
+
+exports.assignTopicToStudent = async (req, res) => {
+  const professor_id = req.user.id;
+  const { topic_id, student_id } = req.body;
+
+  try {
+    // Έλεγχος ότι το θέμα ανήκει στον καθηγητή και είναι διαθέσιμο
+    const [topics] = await db.query(
+      "SELECT * FROM diplomatikhergasia WHERE id = ? AND professor_id = ? AND status = 'available'",
+      [topic_id, professor_id]
+    );
+    if (topics.length === 0) {
+      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο" });
+    }
+
+    // Ενημέρωση εγγραφής
+    await db.query(
+      "UPDATE diplomatikhergasia SET student_id = ?, status = 'under_assignment' WHERE id = ?",
+      [student_id, topic_id]
+    );
+
+    res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
+  } catch (err) {
+    console.error("Σφάλμα ανάθεσης:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
