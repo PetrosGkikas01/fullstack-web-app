@@ -81,3 +81,33 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.listAll = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT id, name, email, student_number FROM student ORDER BY name ASC"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch students" });
+  }
+};
+
+exports.getByNumber = async (req, res) => {
+  try {
+    const code = String(req.params.code || "").trim();
+    if (!code) return res.status(400).json({ error: "Missing student code" });
+
+    const [rows] = await db.query(
+      "SELECT id, name, email, student_number FROM student WHERE student_number = ? LIMIT 1",
+      [code]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("getByNumber error:", err);
+    res.status(500).json({ error: "Lookup failed" });
+  }
+};

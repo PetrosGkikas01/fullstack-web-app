@@ -1,25 +1,25 @@
+// backend/routes/StudentRoutes.js
 const express = require("express");
 const router = express.Router();
+
 const StudentController = require("../controllers/StudentController");
-const auth = require("../middleware/auth");
+const { verifyToken } = require("../middleware/auth");
 
-router.get("/", (req, res) => {
-  res.json({ message: "Students API working ✅" });
-});
+// Health check
+router.get("/", (req, res) => res.json({ message: "Students API working ✅" }));
 
+// Auth
 router.post("/register", StudentController.register);
 router.post("/login", StudentController.login);
-router.put("/update-profile", auth.verifyToken, StudentController.updateProfile);
-router.get("/me", auth.verifyToken, StudentController.getMe);
-router.get("/all", auth.verifyToken, async (req, res) => {
-  try {
-    const [rows] = await require("../config/db").query(
-      "SELECT id, name, email FROM student"
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("Σφάλμα λήψης φοιτητών:", err);
-    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
-  }
-});
+
+// Profile (protected)
+router.put("/update-profile", verifyToken, StudentController.updateProfile);
+router.get("/me", verifyToken, StudentController.getMe);
+
+// List all students (must include student_number for AM matching)
+router.get("/all", verifyToken, StudentController.listAll);
+
+// Find ONE by student_number (AM)
+router.get("/by-number/:code", verifyToken, StudentController.getByNumber);
+
 module.exports = router;
