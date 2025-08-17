@@ -3,7 +3,7 @@ import { useState, useContext } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { loginStudent } from "../api/Student";
 import { loginProfessor } from "../api/Professor";
-// import { loginSecretary } from "../api/Secretary"; // Αν φτιάξεις API για γραμματεία
+import { loginSecretary } from "../api/Secretary"; 
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -19,8 +19,8 @@ const Login = () => {
           return loginStudent({ email, password });
         case "professor":
           return loginProfessor({ email, password });
-        // case "secretary":
-        //   return loginSecretary({ email, password });
+        case "secretary":
+          return loginSecretary({ email, password });
         default:
           throw new Error("Μη υποστηριζόμενος ρόλος");
       }

@@ -88,10 +88,9 @@ const EditTopic = () => {
 
       {existingPdf && (
         <p>
-          Τρέχον PDF: <a href={`/${existingPdf}`} target="_blank" rel="noreferrer">Προβολή</a>
+          Τρέχον PDF: <a href={`http://localhost:5000/uploads/${existingPdf}`} target="_blank" rel="noreferrer">Προβολή</a>
         </p>
       )}
-
       <input type="file" name="pdf_file" accept="application/pdf" onChange={handleChange} />
 
       <button type="submit" disabled={loading}>

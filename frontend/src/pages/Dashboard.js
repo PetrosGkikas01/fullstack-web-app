@@ -59,9 +59,9 @@ const Dashboard = () => {
             )}
             {auth.role === "secretary" && (
               <>
-                <li onClick={() => {navigate("/manage-users"); setMenuOpen(false);}}>Προβολή ΔΕ</li>
-                <li onClick={() => {navigate("/reports"); setMenuOpen(false);}}>Εισαγωγή δεδομένων</li>
-                <li onClick={() => {navigate("/reports"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
+                <li onClick={() => {navigate("/ShowThesis"); setMenuOpen(false);}}>Προβολή ΔΕ</li>
+                <li onClick={() => {navigate("/InsertData"); setMenuOpen(false);}}>Εισαγωγή δεδομένων</li>
+                <li onClick={() => {navigate("/Thesis"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>
             )}
           </ul>

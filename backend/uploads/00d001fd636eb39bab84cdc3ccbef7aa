@@ -1,0 +1,11 @@
+{
+  "professors": [
+    {
+      "name": "Δρ. Νίκος Καραγιάννης",
+      "email": "Test@professor.com",
+      "password": "12345",
+      "specialty": "ΤΝ",
+      "is_admin": 0
+    }
+  ]
+}

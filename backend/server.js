@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 require("dotenv").config();
 const path = require("path");
 const app = express();
+const SecretaryRoutes = require("./routes/SecretaryRoutes");
 const corsOptions = {
   origin: "http://localhost:3000",
   credentials: true,
@@ -27,6 +28,7 @@ app.use("/api/student", StudentRoutes);
 app.use("/api/professor", ProfessorRoutes);
 app.use("/api/diplomatikh-ergasia", DiplomatikhErgasiaRoutes);
 app.use("/api/announcement", AnnouncementRoutes);
+app.use("/api/secretary", SecretaryRoutes);
 
 app.get("/", (req, res) => {
   res.send("Diplomatiki Backend Running ✅");

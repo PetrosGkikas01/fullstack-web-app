@@ -1,14 +1,13 @@
 import {BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import PrivateRoute from "./routes/PrivateRoute";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UpdateProfile from "./pages/UpdateProfile";
 import ProfessorTopics from "./pages/ProfessorTopics";
 import CreateTopic from "./pages/CreateTopic";
 import EditTopic from "./pages/EditTopic";
 import NewAssignment from "./pages/NewAssignment";
+import InsertData from "./pages/InsertData";
 function App() {
   return (
     <BrowserRouter>
@@ -29,6 +28,8 @@ function App() {
       <Route path="/professor/topics/:id/edit" element={<EditTopic />} />
       <Route path="/create-topic" element={<CreateTopic />} />
       <Route path="/new-assignment" element={<NewAssignment />} />
+      <Route
+          path="/InsertData" element={<InsertData />} />
     </Routes>
     </BrowserRouter>
   );
