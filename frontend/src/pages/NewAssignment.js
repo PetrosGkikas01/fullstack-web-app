@@ -1,170 +1,173 @@
+// src/pages/NewAssignment.js (GR)
 import React, { useEffect, useState, useContext } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { assignTopicToStudent } from "../api/Professor"; // το ήδη υπάρχον action
 import "./NewAssignment.css";
+
+// Προσαρμόζεις αν χρειάζεται:
+const API_BASE = "http://localhost:5000";
+const API_URL_TOPICS  = `${API_BASE}/api/professor/topics`;
+const API_URL_ASSIGN  = `${API_BASE}/api/professor/assign-topic`;
+const API_URL_BY_AM   = `${API_BASE}/api/student/by-number`; // /by-number/:code
 
 const NewAssignment = () => {
   const { auth } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // Λίστα θεμάτων & επιλογή
   const [topics, setTopics] = useState([]);
-  const [students, setStudents] = useState([]);
-
   const [selectedTopic, setSelectedTopic] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState("");
 
+  // Κωδικός φοιτητή (ΑΜ) & ταυτοποίηση από backend
+  const [studentCode, setStudentCode] = useState("");
+  const [matchedStudent, setMatchedStudent] = useState(null);
+  const [checking, setChecking] = useState(false);
+
+  // Κατάσταση UI
   const [loading, setLoading] = useState(true);
-  const [errText, setErrText] = useState("");
-  const [okText, setOkText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info"); // "success" | "error" | "info"
 
-  // ---- Φόρτωση θεμάτων καθηγητή (μόνο διαθέσιμα) & λίστας φοιτητών
+  // Φόρτωση θεμάτων (μόνο όσα δεν έχουν ανατεθεί)
   useEffect(() => {
-    const fetchData = async () => {
+    const loadTopics = async () => {
       try {
         setLoading(true);
-        setErrText("");
-
-        // Φόρτωση θεμάτων καθηγητή
-        const topicsRes = await fetch("http://localhost:5000/api/professor/topics", {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-        const topicsJson = await topicsRes.json();
-
-        const allTopics = Array.isArray(topicsJson) ? topicsJson : [];
-        // Κρατάμε μόνο διαθέσιμα (status === 'available') και χωρίς student_id
-        const available = allTopics.filter(
-          t =>
-            (t.status?.toLowerCase?.() === "available" || t.status === null) &&
-            (t.student_id === null || typeof t.student_id === "undefined")
-        );
+        setMessage("");
+        const headers = { Authorization: `Bearer ${auth?.token}` };
+        const res = await axios.get(API_URL_TOPICS, { headers });
+        const list = Array.isArray(res.data) ? res.data : [];
+        const available = list.filter((t) => t.student_id == null);
         setTopics(available);
-
-        // Φόρτωση φοιτητών
-        const studentsRes = await fetch("http://localhost:5000/api/student/all", {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-
-        let studentsJson;
-        try {
-          studentsJson = await studentsRes.json();
-        } catch {
-          studentsJson = [];
-        }
-
-        const asArray = Array.isArray(studentsJson) ? studentsJson : [];
-        // Προσπαθούμε να καλύψουμε διαφορετικά ονόματα πεδίων (name/fullName/student_number)
-        const normalized = asArray.map(s => ({
-          id: s.id,
-          name: s.name || s.fullName || `${s.firstName || ""} ${s.lastName || ""}`.trim(),
-          student_number: s.student_number || s.am || s.studentNumber || "",
-          email: s.email || "",
-        }));
-        setStudents(normalized);
       } catch (e) {
-        setErrText("Αποτυχία φόρτωσης δεδομένων. Έλεγξε τα endpoints.");
+        console.error(e);
+        setMessageType("error");
+        setMessage("Αποτυχία φόρτωσης θεμάτων. Έλεγξε το token/endpoints.");
       } finally {
         setLoading(false);
       }
     };
-
-    if (auth?.token) fetchData();
+    if (auth?.token) loadTopics();
   }, [auth?.token]);
 
-  // ---- Ανάθεση
+  // Debounced αναζήτηση φοιτητή με ΑΜ
+  useEffect(() => {
+    const code = studentCode.trim();
+    setMatchedStudent(null);
+    if (!code) return;
+
+    const t = setTimeout(async () => {
+      try {
+        setChecking(true);
+        const headers = { Authorization: `Bearer ${auth?.token}` };
+        const res = await axios.get(`${API_URL_BY_AM}/${encodeURIComponent(code)}`, { headers });
+        // Περιμένουμε { id, name, email, student_number }
+        setMatchedStudent(res.data);
+      } catch {
+        setMatchedStudent(null); // δεν βρέθηκε ή σφάλμα
+      } finally {
+        setChecking(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(t);
+  }, [studentCode, auth?.token]);
+
   const handleAssign = async (e) => {
     e.preventDefault();
-    setOkText("");
-    setErrText("");
+    setMessage(""); setMessageType("info");
 
-    if (!selectedTopic || !selectedStudent) {
-      setErrText("Συμπλήρωσε και τα δύο πεδία.");
-      return;
+    if (!selectedTopic) {
+      setMessageType("error"); setMessage("Επίλεξε ένα θέμα πρώτα."); return;
+    }
+    if (!studentCode.trim()) {
+      setMessageType("error"); setMessage("Πληκτρολόγησε τον κωδικό φοιτητή (ΑΜ)."); return;
+    }
+    if (!matchedStudent?.id) {
+      setMessageType("error"); setMessage("Δεν βρέθηκε φοιτητής με αυτό το ΑΜ."); return;
     }
 
     try {
-      // Η assignTopicToStudent(topicId, studentId) την έχεις ήδη.
-      const res = await assignTopicToStudent(selectedTopic, selectedStudent);
-      setOkText(res?.message || "Η ανάθεση ολοκληρώθηκε.");
-      // reset προαιρετικά
+      setSubmitting(true);
+      const headers = {
+        Authorization: `Bearer ${auth?.token}`,
+        "Content-Type": "application/json",
+      };
+      const payload = { topicId: Number(selectedTopic), studentId: Number(matchedStudent.id) };
+      const res = await axios.post(API_URL_ASSIGN, payload, { headers });
+
+      setMessageType("success");
+      setMessage(res.data?.message || "Η ανάθεση ολοκληρώθηκε επιτυχώς.");
       setSelectedTopic("");
-      setSelectedStudent("");
+      setStudentCode("");
+      setMatchedStudent(null);
     } catch (err) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.message ||
-        "Σφάλμα κατά την ανάθεση.";
-      setErrText(msg);
+      console.error(err);
+      const apiErr = err.response?.data?.error || err.response?.data?.message || "Κάτι πήγε στραβά.";
+      setMessageType("error");
+      setMessage(`Σφάλμα: ${apiErr}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="form-page">
-      <div className="form-card">
-        <h2 className="form-title">Ανάθεση Θέματος σε Φοιτητή</h2>
+    <div className="new-assignment-page">
+      <div className="card">
+        <h2 className="title">Ανάθεση Θέματος σε Φοιτητή</h2>
+        <p className="subtitle">Επίλεξε διαθέσιμο θέμα και πληκτρολόγησε τον <strong>κωδικό φοιτητή (ΑΜ)</strong>.</p>
 
         {loading ? (
-          <p className="muted">Φόρτωση δεδομένων…</p>
+          <p className="msg info">Φόρτωση…</p>
         ) : (
-          <form onSubmit={handleAssign}>
+          <form className="form" onSubmit={handleAssign}>
             {/* Επιλογή Θέματος */}
-            <div className="form-group">
-              <label htmlFor="topic">Θέμα</label>
-              <select
-                id="topic"
-                value={selectedTopic}
-                onChange={(e) => setSelectedTopic(e.target.value)}
-              >
-                <option value="">— επίλεξε θέμα —</option>
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
-              {topics.length === 0 && (
-                <p className="muted small">Δεν υπάρχουν διαθέσιμα θέματα.</p>
-              )}
-            </div>
+            <label className="label" htmlFor="topic">Θέμα</label>
+            <select
+              id="topic"
+              className="input"
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+            >
+              <option value="">— επίλεξε θέμα —</option>
+              {topics.map((t) => (
+                <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+            {topics.length === 0 && <p className="muted small">Δεν υπάρχουν διαθέσιμα θέματα.</p>}
 
-            {/* Επιλογή Φοιτητή */}
-            <div className="form-group">
-              <label htmlFor="student">Φοιτητής</label>
-              <select
-                id="student"
-                value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
-              >
-                <option value="">— επίλεξε φοιτητή —</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name || "Χωρίς ονοματεπώνυμο"}
-                    {s.student_number ? ` — ${s.student_number}` : ""}
-                    {s.email ? ` — ${s.email}` : ""}
-                  </option>
-                ))}
-              </select>
-              {students.length === 0 && (
-                <p className="muted small">
-                  Δεν βρέθηκαν φοιτητές (έλεγξε το endpoint /api/student/list).
-                </p>
-              )}
-            </div>
+            {/* Κωδικός Φοιτητή (ΑΜ) */}
+            <label className="label" htmlFor="studentCode">Κωδικός Φοιτητή (ΑΜ)</label>
+            <input
+              id="studentCode"
+              className="input"
+              type="text"
+              placeholder="π.χ. 2025001"
+              value={studentCode}
+              onChange={(e) => setStudentCode(e.target.value)}
+              autoComplete="off"
+            />
 
-            {/* Μηνύματα */}
-            {okText && <p className="success">{okText}</p>}
-            {errText && <p className="error">{errText}</p>}
+            {/* Ένδειξη ταύτισης */}
+            {studentCode.trim() && (
+              <p className={`hint ${matchedStudent ? "ok" : "bad"}`}>
+                {checking
+                  ? "Έλεγχος…"
+                  : matchedStudent
+                  ? `✓ ${matchedStudent.name}${matchedStudent.email ? " — " + matchedStudent.email : ""}`
+                  : "✗ Δεν βρέθηκε φοιτητής με αυτό το ΑΜ"}
+              </p>
+            )}
 
-            {/* Κουμπιά */}
+            {message && <p className={`msg ${messageType}`}>{message}</p>}
+
             <div className="actions">
-              <button type="submit" className="btn-primary">
-                Ανάθεση
+              <button className="btn primary" type="submit" disabled={submitting}>
+                {submitting ? "Γίνεται ανάθεση…" : "Ανάθεση"}
               </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => navigate(-1)}
-              >
+              <button type="button" className="btn ghost" onClick={() => navigate(-1)}>
                 Πίσω
               </button>
             </div>
