@@ -49,7 +49,7 @@ export const updateTopic = async (id, data) => {
 export const assignTopicToStudent = async (topic_id, student_id) => {
   const token = localStorage.getItem("token");
   const res = await axios.post(
-    "/api/professor/assign-topic",
+    "/api/professor/assign",
     { topic_id, student_id },
     {
       headers: {

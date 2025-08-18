@@ -32,7 +32,7 @@ const Dashboard = () => {
           <ul className="menu-list">
             {auth.role === "student" && (
               <>
-                <li onClick={() => {navigate("/my-declarations"); setMenuOpen(false);}}>Προβολή θέματος</li>
+                <li onClick={() => {navigate("/MyAssignment"); setMenuOpen(false);}}>Προβολή θέματος</li>
                 <li onClick={() => {navigate("/update-profile"); setMenuOpen(false);}}>Επεξεργασία Προφίλ</li>
                 <li onClick={() => {navigate("/available-theses"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>

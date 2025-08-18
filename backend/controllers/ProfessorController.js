@@ -155,28 +155,54 @@ exports.updateTopic = async (req, res) => {
 
 exports.assignTopicToStudent = async (req, res) => {
   const professor_id = req.user.id;
-  const { topic_id, student_id } = req.body;
+  let { topic_id, student_id } = req.body;
+
+  // Ασφάλεια τύπων
+  topic_id = Number(topic_id);
+  student_id = Number(student_id);
+  if (!Number.isInteger(topic_id) || !Number.isInteger(student_id)) {
+    return res.status(400).json({ error: "Μη έγκυρες παράμετροι (ids πρέπει να είναι ακέραιοι)." });
+  }
 
   try {
-    // Έλεγχος ότι το θέμα ανήκει στον καθηγητή και είναι διαθέσιμο
-    const [topics] = await db.query(
-      "SELECT * FROM diplomatikhergasia WHERE id = ? AND professor_id = ? AND status = 'available'",
-      [topic_id, professor_id]
+    // 1) Υπάρχει ο φοιτητής;
+    const [stu] = await db.query(
+      "SELECT id FROM student WHERE id = ? LIMIT 1",
+      [student_id]
     );
-    if (topics.length === 0) {
-      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο" });
+    if (!stu.length) {
+      return res.status(400).json({ error: "Ο φοιτητής δεν βρέθηκε." });
     }
 
-    // Ενημέρωση εγγραφής
+    // 2) Το θέμα ανήκει στον καθηγητή και είναι διαθέσιμο;
+    const [topics] = await db.query(
+      "SELECT id FROM DiplomatikhErgasia WHERE id = ? AND professor_id = ? AND status = 'available' LIMIT 1",
+      [topic_id, professor_id]
+    );
+    if (!topics.length) {
+      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο." });
+    }
+
+    // 3) Ενημέρωση
     await db.query(
-      "UPDATE diplomatikhergasia SET student_id = ?, status = 'under_assignment' WHERE id = ?",
+      "UPDATE DiplomatikhErgasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
       [student_id, topic_id]
     );
 
-    res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
+    return res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
   } catch (err) {
     console.error("Σφάλμα ανάθεσης:", err);
-    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+
+    // Καθαρότερα μηνύματα για γνωστά MySQL errors
+    if (err?.code === "ER_NO_REFERENCED_ROW_2" || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(400).json({ error: "Αποτυχία ελέγχου ακεραιότητας (FK). Έλεγξε το student_id." });
+    }
+    if (err?.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD") {
+      return res.status(400).json({ error: "Λάθος τύπος δεδομένου (π.χ. μη αριθμός σε INT)." });
+    }
+
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
+
 

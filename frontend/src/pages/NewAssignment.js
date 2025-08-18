@@ -8,7 +8,7 @@ import "./NewAssignment.css";
 // Προσαρμόζεις αν χρειάζεται:
 const API_BASE = "http://localhost:5000";
 const API_URL_TOPICS  = `${API_BASE}/api/professor/topics`;
-const API_URL_ASSIGN  = `${API_BASE}/api/professor/assign-topic`;
+const API_URL_ASSIGN  = `${API_BASE}/api/professor/assign`;
 const API_URL_BY_AM   = `${API_BASE}/api/student/by-number`; // /by-number/:code
 
 const NewAssignment = () => {
@@ -39,7 +39,7 @@ const NewAssignment = () => {
         const headers = { Authorization: `Bearer ${auth?.token}` };
         const res = await axios.get(API_URL_TOPICS, { headers });
         const list = Array.isArray(res.data) ? res.data : [];
-        const available = list.filter((t) => t.student_id == null);
+        const available = list.filter((t) => t.status === "available");
         setTopics(available);
       } catch (e) {
         console.error(e);
@@ -95,9 +95,9 @@ const NewAssignment = () => {
         Authorization: `Bearer ${auth?.token}`,
         "Content-Type": "application/json",
       };
-      const payload = { topicId: Number(selectedTopic), studentId: Number(matchedStudent.id) };
+      const payload = { topic_id: Number(selectedTopic), student_id: Number(matchedStudent.id) 
+      };
       const res = await axios.post(API_URL_ASSIGN, payload, { headers });
-
       setMessageType("success");
       setMessage(res.data?.message || "Η ανάθεση ολοκληρώθηκε επιτυχώς.");
       setSelectedTopic("");

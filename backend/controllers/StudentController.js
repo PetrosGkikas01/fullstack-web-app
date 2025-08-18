@@ -111,3 +111,45 @@ exports.getByNumber = async (req, res) => {
     res.status(500).json({ error: "Lookup failed" });
   }
 };
+exports.getMyAssignment = async (req, res) => {
+  // req.user.id πρέπει να είναι το id του student (JWT με role: "student")
+  const student_id = req.user?.id;
+
+  if (!student_id) {
+    return res.status(401).json({ error: "Μη εξουσιοδοτημένο" });
+  }
+
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT
+        d.id            AS topic_id,
+        d.title,
+        d.description,
+        d.status,
+        d.pdf_file,
+        d.assigned_at,
+        p.id            AS professor_id,
+        p.name          AS professor_name,
+        p.email         AS professor_email,
+        p.specialty     AS professor_specialty
+      FROM diplomatikhergasia d
+      JOIN professor p ON p.id = d.professor_id
+      WHERE d.student_id = ?
+      ORDER BY d.assigned_at DESC, d.id DESC
+      LIMIT 1
+      `,
+      [student_id]
+    );
+
+    if (!rows.length) {
+      // 404 = δεν έχει ακόμη ανάθεση
+      return res.status(404).json({ error: "Δεν έχεις ακόμη ανάθεση θέματος." });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Σφάλμα ανάκτησης ανάθεσης φοιτητή:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};

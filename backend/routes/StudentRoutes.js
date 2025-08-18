@@ -21,5 +21,5 @@ router.get("/all", verifyToken, StudentController.listAll);
 
 // Find ONE by student_number (AM)
 router.get("/by-number/:code", verifyToken, StudentController.getByNumber);
-
+router.get("/MyAssignment", verifyToken, StudentController.getMyAssignment);
 module.exports = router;

@@ -8,6 +8,7 @@ import CreateTopic from "./pages/CreateTopic";
 import EditTopic from "./pages/EditTopic";
 import NewAssignment from "./pages/NewAssignment";
 import InsertData from "./pages/InsertData";
+import MyAssignment from "./pages/MyAssignment";
 function App() {
   return (
     <BrowserRouter>
@@ -28,9 +29,10 @@ function App() {
       <Route path="/professor/topics/:id/edit" element={<EditTopic />} />
       <Route path="/create-topic" element={<CreateTopic />} />
       <Route path="/new-assignment" element={<NewAssignment />} />
-      <Route
-          path="/InsertData" element={<InsertData />} />
+      <Route path="/InsertData" element={<InsertData />} />
+      <Route path="/MyAssignment" element={<MyAssignment />} />
     </Routes>
+    
     </BrowserRouter>
   );
 }

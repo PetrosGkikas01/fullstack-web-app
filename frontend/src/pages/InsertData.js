@@ -96,7 +96,7 @@ export default function InsertData() {
         </button>
       </div>
 
-      {/* Πίσω: κάτω από τα κουμπιά, κεντραρισμένο */}
+    
       <div className="back-wrap">
         <button className="btn-back" onClick={onBack}>← Πίσω</button>
       </div>

@@ -1,0 +1,45 @@
+.my-assignment-page {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.my-assignment-page .card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  padding: 1.25rem 1.5rem;
+}
+
+.my-assignment-page .title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.35rem;
+}
+
+.my-assignment-page .msg {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  line-height: 1.35;
+}
+.my-assignment-page .msg.info { background: #f3f6ff; }
+.my-assignment-page .msg.error { background: #ffecec; }
+
+.my-assignment-page .muted { color: #6b7280; }
+.my-assignment-page .small { font-size: 0.9rem; }
+
+.my-assignment-page .assignment p {
+  margin: 0.4rem 0;
+}
+
+.my-assignment-page .description {
+  white-space: pre-wrap;
+}
+
+.my-assignment-page .link {
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+.my-assignment-page .link:hover {
+  opacity: 0.9;
+}

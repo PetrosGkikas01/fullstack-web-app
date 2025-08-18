@@ -18,7 +18,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Routes
 const StudentRoutes = require("./routes/StudentRoutes");
 const ProfessorRoutes = require("./routes/ProfessorRoutes");
-const DiplomatikhErgasiaRoutes = require("./routes/DiplomatikhErgasiaRoutes");
+
 const AnnouncementRoutes = require("./routes/AnnouncementRoutes");
 app.use("/api/student", (req, res, next) => {
   console.log(`Incoming request to /api/student: ${req.method} ${req.path}`);
@@ -26,7 +26,7 @@ app.use("/api/student", (req, res, next) => {
 });
 app.use("/api/student", StudentRoutes);
 app.use("/api/professor", ProfessorRoutes);
-app.use("/api/diplomatikh-ergasia", DiplomatikhErgasiaRoutes);
+
 app.use("/api/announcement", AnnouncementRoutes);
 app.use("/api/secretary", SecretaryRoutes);
 
