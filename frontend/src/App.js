@@ -9,6 +9,8 @@ import EditTopic from "./pages/EditTopic";
 import NewAssignment from "./pages/NewAssignment";
 import InsertData from "./pages/InsertData";
 import MyAssignment from "./pages/MyAssignment";
+import ManageThesis from "./pages/ManageThesis";
+import CommitteeInvitations from "./pages/CommitteeInvitations";
 function App() {
   return (
     <BrowserRouter>
@@ -31,6 +33,8 @@ function App() {
       <Route path="/new-assignment" element={<NewAssignment />} />
       <Route path="/InsertData" element={<InsertData />} />
       <Route path="/MyAssignment" element={<MyAssignment />} />
+      <Route path="/ManageThesis" element={<ManageThesis />} />
+      <Route path="/committee-invitations" element={<CommitteeInvitations />} />
     </Routes>
     
     </BrowserRouter>

@@ -52,6 +52,7 @@ router.put("/topics/:id", verifyToken, (req, res, next) => {
 }, ProfessorController.updateTopic);
 
 router.post("/assign", verifyToken, ProfessorController.assignTopicToStudent);
-
+router.post("/committee/respond", verifyToken, ProfessorController.respondToCommitteeInvitation);
+router.get("/committee/invitations", verifyToken, ProfessorController.listMyCommitteeInvitations);
 
 module.exports = router;

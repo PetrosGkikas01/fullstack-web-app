@@ -1,0 +1,23 @@
+.ci-page { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+.card { background:#fff; border:1px solid #eee; border-radius:12px; padding:1rem 1.25rem; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+
+.error-box { background:#ffe6e6; border:1px solid #ffb3b3; color:#a30000; padding:.6rem .8rem; border-radius:8px; margin-bottom:.8rem; }
+
+.toolbar { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
+.toolbar select { padding:.3rem .5rem; border-radius:8px; border:1px solid #ddd; }
+
+.tbl { width:100%; border-collapse: collapse; }
+.tbl th, .tbl td { padding:.5rem .6rem; border-bottom:1px solid #eee; text-align:left; vertical-align: top; }
+
+.badge { padding:.15rem .45rem; border-radius:6px; font-size:.85rem; border:1px solid #ddd; }
+.badge-pending { background:#fff7db; border-color:#ffe28a; }
+.badge-accepted { background:#e6fff2; border-color:#98f0c4; }
+.badge-rejected { background:#ffe6e6; border-color:#ffb3b3; }
+.badge-cancelled { background:#f0f0f0; border-color:#e0e0e0; }
+
+.muted { color:#666; }
+.small { font-size: .85rem; }
+.actions { display:flex; gap:.5rem; }
+.actions button { padding:.4rem .7rem; border:1px solid #ddd; border-radius:8px; cursor:pointer; }
+.actions .danger { border-color:#ffb3b3; }
+.thesis-title { font-weight: 600; }

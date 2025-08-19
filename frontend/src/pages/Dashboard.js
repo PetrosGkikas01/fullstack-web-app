@@ -34,7 +34,7 @@ const Dashboard = () => {
               <>
                 <li onClick={() => {navigate("/MyAssignment"); setMenuOpen(false);}}>Προβολή θέματος</li>
                 <li onClick={() => {navigate("/update-profile"); setMenuOpen(false);}}>Επεξεργασία Προφίλ</li>
-                <li onClick={() => {navigate("/available-theses"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
+                <li onClick={() => {navigate("/ManageThesis"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>
             )}
             {auth.role === "professor" && (

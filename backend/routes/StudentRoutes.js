@@ -22,4 +22,8 @@ router.get("/all", verifyToken, StudentController.listAll);
 // Find ONE by student_number (AM)
 router.get("/by-number/:code", verifyToken, StudentController.getByNumber);
 router.get("/MyAssignment", verifyToken, StudentController.getMyAssignment);
+router.get("/committee/professors", verifyToken, StudentController.listProfessorsForCommittee);
+router.get("/committee", verifyToken, StudentController.listCommitteeInvitations);
+router.post("/committee/invite", verifyToken, StudentController.inviteProfessorToCommittee);
+router.delete("/committee/:id", verifyToken, StudentController.cancelCommitteeInvitation);
 module.exports = router;

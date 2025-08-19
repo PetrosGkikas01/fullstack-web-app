@@ -165,7 +165,7 @@ exports.assignTopicToStudent = async (req, res) => {
   }
 
   try {
-    // 1) Υπάρχει ο φοιτητής;
+    
     const [stu] = await db.query(
       "SELECT id FROM student WHERE id = ? LIMIT 1",
       [student_id]
@@ -174,7 +174,7 @@ exports.assignTopicToStudent = async (req, res) => {
       return res.status(400).json({ error: "Ο φοιτητής δεν βρέθηκε." });
     }
 
-    // 2) Το θέμα ανήκει στον καθηγητή και είναι διαθέσιμο;
+    
     const [topics] = await db.query(
       "SELECT id FROM DiplomatikhErgasia WHERE id = ? AND professor_id = ? AND status = 'available' LIMIT 1",
       [topic_id, professor_id]
@@ -183,7 +183,7 @@ exports.assignTopicToStudent = async (req, res) => {
       return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο." });
     }
 
-    // 3) Ενημέρωση
+    
     await db.query(
       "UPDATE DiplomatikhErgasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
       [student_id, topic_id]
@@ -193,7 +193,7 @@ exports.assignTopicToStudent = async (req, res) => {
   } catch (err) {
     console.error("Σφάλμα ανάθεσης:", err);
 
-    // Καθαρότερα μηνύματα για γνωστά MySQL errors
+    
     if (err?.code === "ER_NO_REFERENCED_ROW_2" || err?.code === "ER_ROW_IS_REFERENCED_2") {
       return res.status(400).json({ error: "Αποτυχία ελέγχου ακεραιότητας (FK). Έλεγξε το student_id." });
     }
@@ -205,4 +205,84 @@ exports.assignTopicToStudent = async (req, res) => {
   }
 };
 
+exports.respondToCommitteeInvitation = async (req, res) => {
+try {
+const professorId = req.user.id;
+const { invitation_id, action } = req.body; 
+if (!invitation_id || !['accept','reject'].includes(action)) {
+return res.status(400).json({ error: "Λάθος παράμετροι" });
+}
 
+
+const [rows] = await db.query(
+`SELECT diplomatikhergasia_id, status FROM committee_invitation WHERE id=? AND professor_id=?`,
+[invitation_id, professorId]
+);
+if (!rows.length) return res.status(404).json({ error: "Δεν βρέθηκε πρόσκληση." });
+if (rows[0].status !== 'pending') return res.status(400).json({ error: "Η πρόσκληση δεν είναι εκκρεμής." });
+
+const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+await db.query(
+`UPDATE committee_invitation SET status=?, responded_at=NOW() WHERE id=?`,
+[newStatus, invitation_id]
+);
+
+if (newStatus === 'accepted') {
+const thesisId = rows[0].diplomatikhergasia_id;
+
+const [acc] = await db.query(
+`SELECT COUNT(*) AS c FROM committee_invitation WHERE diplomatikhergasia_id=? AND status='accepted'`,
+[thesisId]
+);
+if (acc[0].c >= 2) {
+
+await db.query(`UPDATE diplomatikhergasia SET status='active' WHERE id=?`, [thesisId]);
+await db.query(`UPDATE committee_invitation SET status='cancelled' WHERE diplomatikhergasia_id=? AND status='pending'`, [thesisId]);
+}
+}
+
+return res.json({ message: "Η απάντησή σας καταχωρήθηκε." });
+} catch (err) {
+console.error("respondToCommitteeInvitation error", err);
+return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+}
+};
+
+exports.listMyCommitteeInvitations = async (req, res) => {
+  try {
+    const professorId = req.user.id;
+    const { status } = req.query; // optional: 'pending' | 'accepted' | 'rejected' | 'cancelled'
+
+    const params = [professorId];
+    let where = "ci.professor_id = ?";
+    if (status) {
+      where += " AND ci.status = ?";
+      params.push(status);
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+         ci.id               AS id,
+         ci.status           AS status,
+         ci.invited_at       AS invited_at,
+         ci.responded_at     AS responded_at,
+         d.id                AS thesis_id,
+         d.title             AS thesis_title,
+         d.status            AS thesis_status,
+         s.id                AS student_id,
+         s.name              AS student_name,
+         s.email             AS student_email
+       FROM committee_invitation ci
+       JOIN diplomatikhergasia d ON d.id = ci.diplomatikhergasia_id
+       JOIN student s ON s.id = d.student_id
+       WHERE ${where}
+       ORDER BY ci.invited_at DESC`,
+      params
+    );
+
+    return res.json(rows);
+  } catch (err) {
+    console.error("listMyCommitteeInvitations error", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};

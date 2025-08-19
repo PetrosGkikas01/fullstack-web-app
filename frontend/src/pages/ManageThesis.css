@@ -1,0 +1,23 @@
+.thesis-page { max-width: 960px; margin: 0 auto; padding: 1rem; }
+.card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.error-box { background:#ffe6e6; border:1px solid #ffb3b3; color:#a30000; padding:.6rem .8rem; border-radius:8px; margin-bottom:.8rem; }
+.status-row { display:flex; gap:1rem; align-items:center; margin:.5rem 0 1rem; }
+.status-under_assignment { padding:.15rem .5rem; background:#fff5e6; border:1px solid #ffd699; border-radius:6px; }
+.status-active { padding:.15rem .5rem; background:#e6fff2; border:1px solid #99ffcc; border-radius:6px; }
+.accepted-pill { margin-left:auto; font-size:.9rem; background:#f4f4f4; padding:.2rem .5rem; border-radius:999px; }
+.invite-row { display:flex; gap:.5rem; align-items:center; margin: .5rem 0 1rem; }
+.invite-row select { padding:.4rem .5rem; border-radius:8px; }
+.invite-row button { padding:.45rem .8rem; border-radius:8px; border:1px solid #ddd; cursor:pointer; }
+
+.tbl { width:100%; border-collapse: collapse; }
+.tbl th, .tbl td { padding:.5rem .6rem; border-bottom:1px solid #eee; text-align:left; }
+
+.badge { padding:.15rem .45rem; border-radius:6px; font-size:.85rem; border:1px solid #ddd; }
+.badge-pending { background:#fff7db; border-color:#ffe28a; }
+.badge-accepted { background:#e6fff2; border-color:#98f0c4; }
+.badge-rejected { background:#ffe6e6; border-color:#ffb3b3; }
+.badge-cancelled { background:#f0f0f0; border-color:#e0e0e0; }
+
+.muted { color:#666; }
+.link { background:none; border:none; color:#0b63c3; cursor:pointer; padding:0; }
+.link:hover { text-decoration: underline; }
