@@ -50,7 +50,7 @@ exports.createTopic = async (req, res) => {
   console.log("📥 Received topic:", { title, description, professor_id, pdf_file });
 
   const sql = `
-    INSERT INTO DiplomatikhErgasia 
+    INSERT INTO diplomatikhergasia 
     (title, description, professor_id, status, pdf_file)
     VALUES (?, ?, ?, 'available', ?)`;
 
@@ -71,7 +71,7 @@ exports.getMyTopics = async (req, res) => {
   const professor_id = req.user.id;
 
   const sql = 
-    "SELECT id, title, description, status, pdf_file FROM DiplomatikhErgasia WHERE professor_id = ? ORDER BY id DESC";
+    "SELECT id, title, description, status, pdf_file FROM diplomatikhergasia WHERE professor_id = ? ORDER BY id DESC";
 
   try {
     const [rows] = await db.query(sql, [professor_id]);
@@ -89,7 +89,7 @@ exports.deleteTopic = async (req, res) => {
 
   try {
     const [result] = await db.query(
-      "DELETE FROM DiplomatikhErgasia WHERE id = ? AND professor_id = ?",
+      "DELETE FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
       [topicId, professorId]
     );
 
@@ -110,7 +110,7 @@ exports.getTopicById = async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      "SELECT * FROM DiplomatikhErgasia WHERE id = ? AND professor_id = ?",
+      "SELECT * FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
       [id, professor_id]
     );
 
@@ -133,8 +133,8 @@ exports.updateTopic = async (req, res) => {
 
   try {
     const sql = pdf_file
-      ? "UPDATE DiplomatikhErgasia SET title = ?, description = ?, pdf_file = ? WHERE id = ? AND professor_id = ?"
-      : "UPDATE DiplomatikhErgasia SET title = ?, description = ? WHERE id = ? AND professor_id = ?";
+      ? "UPDATE diplomatikhergasia SET title = ?, description = ?, pdf_file = ? WHERE id = ? AND professor_id = ?"
+      : "UPDATE diplomatikhergasia SET title = ?, description = ? WHERE id = ? AND professor_id = ?";
 
     const params = pdf_file
       ? [title, description, pdf_file, id, professor_id]
@@ -176,7 +176,7 @@ exports.assignTopicToStudent = async (req, res) => {
 
     
     const [topics] = await db.query(
-      "SELECT id FROM DiplomatikhErgasia WHERE id = ? AND professor_id = ? AND status = 'available' LIMIT 1",
+      "SELECT id FROM diplomatikhergasia WHERE id = ? AND professor_id = ? AND status = 'available' LIMIT 1",
       [topic_id, professor_id]
     );
     if (!topics.length) {
@@ -185,7 +185,7 @@ exports.assignTopicToStudent = async (req, res) => {
 
     
     await db.query(
-      "UPDATE DiplomatikhErgasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
+      "UPDATE diplomatikhergasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
       [student_id, topic_id]
     );
 
