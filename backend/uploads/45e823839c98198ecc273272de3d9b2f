@@ -1,0 +1,12 @@
+{
+  
+  "professors": [
+    {
+      "name": "TestProf",
+      "email": "Test2@professor.com",
+      "password": "12345",
+      "specialty": "Αρχιτεκτονικη Υπολογιστων",
+      "is_admin": 0
+    }
+  ]
+}

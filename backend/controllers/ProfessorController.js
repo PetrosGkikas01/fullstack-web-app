@@ -157,7 +157,7 @@ exports.assignTopicToStudent = async (req, res) => {
   const professor_id = req.user.id;
   let { topic_id, student_id } = req.body;
 
-  // Ασφάλεια τύπων
+
   topic_id = Number(topic_id);
   student_id = Number(student_id);
   if (!Number.isInteger(topic_id) || !Number.isInteger(student_id)) {
@@ -206,46 +206,105 @@ exports.assignTopicToStudent = async (req, res) => {
 };
 
 exports.respondToCommitteeInvitation = async (req, res) => {
-try {
-const professorId = req.user.id;
-const { invitation_id, action } = req.body; 
-if (!invitation_id || !['accept','reject'].includes(action)) {
-return res.status(400).json({ error: "Λάθος παράμετροι" });
-}
+  const professorId = req.user.id;
+  const { invitation_id, action } = req.body;
+
+  if (!invitation_id || !["accept", "reject"].includes(action)) {
+    return res.status(400).json({ error: "Λάθος παράμετροι" });
+  }
+
+  let conn;
+  try {
+
+    conn = await db.getConnection();
+    await conn.beginTransaction();
 
 
-const [rows] = await db.query(
-`SELECT diplomatikhergasia_id, status FROM committee_invitation WHERE id=? AND professor_id=?`,
-[invitation_id, professorId]
-);
-if (!rows.length) return res.status(404).json({ error: "Δεν βρέθηκε πρόσκληση." });
-if (rows[0].status !== 'pending') return res.status(400).json({ error: "Η πρόσκληση δεν είναι εκκρεμής." });
+    const [rows] = await conn.query(
+      `SELECT id, status, diplomatikhergasia_id
+         FROM committee_invitation
+        WHERE id = ? AND professor_id = ?
+        FOR UPDATE`,
+      [invitation_id, professorId]
+    );
 
-const newStatus = action === 'accept' ? 'accepted' : 'rejected';
-await db.query(
-`UPDATE committee_invitation SET status=?, responded_at=NOW() WHERE id=?`,
-[newStatus, invitation_id]
-);
+    if (!rows.length) {
+      await conn.rollback();
+      return res.status(404).json({ error: "Δεν βρέθηκε πρόσκληση." });
+    }
+    const inv = rows[0];
 
-if (newStatus === 'accepted') {
-const thesisId = rows[0].diplomatikhergasia_id;
+    if (inv.status !== "pending") {
+      await conn.rollback();
+      return res.status(409).json({ error: "Η πρόσκληση δεν είναι πλέον εκκρεμής." });
+    }
 
-const [acc] = await db.query(
-`SELECT COUNT(*) AS c FROM committee_invitation WHERE diplomatikhergasia_id=? AND status='accepted'`,
-[thesisId]
-);
-if (acc[0].c >= 2) {
+    const newStatus = action === "accept" ? "accepted" : "rejected";
+    await conn.query(
+      `UPDATE committee_invitation
+          SET status = ?, responded_at = NOW()
+        WHERE id = ?`,
+      [newStatus, invitation_id]
+    );
 
-await db.query(`UPDATE diplomatikhergasia SET status='active' WHERE id=?`, [thesisId]);
-await db.query(`UPDATE committee_invitation SET status='cancelled' WHERE diplomatikhergasia_id=? AND status='pending'`, [thesisId]);
-}
-}
+    if (newStatus === "accepted") {
+      const thesisId = inv.diplomatikhergasia_id;
 
-return res.json({ message: "Η απάντησή σας καταχωρήθηκε." });
-} catch (err) {
-console.error("respondToCommitteeInvitation error", err);
-return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
-}
+      await conn.query(
+        `SELECT id FROM diplomatikhergasia WHERE id = ? FOR UPDATE`,
+        [thesisId]
+      );
+
+      const [acc] = await conn.query(
+        `SELECT COUNT(*) AS c
+           FROM committee_invitation
+          WHERE diplomatikhergasia_id = ? AND status = 'accepted'`,
+        [thesisId]
+      );
+      const acceptedCount = acc[0]?.c || 0;
+
+     if (acceptedCount >= 2) {
+        await conn.query(
+          `UPDATE diplomatikhergasia
+              SET status = 'active'
+            WHERE id = ?`,
+          [thesisId]
+        );
+        try {
+          await conn.query(
+            `UPDATE committee_invitation
+                SET status = 'cancelled',
+                    responded_at = COALESCE(responded_at, NOW())
+              WHERE diplomatikhergasia_id = ? AND status = 'pending'`,
+            [thesisId]
+          );
+        } catch (e) {
+          if (e && e.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD") {
+            await conn.query(
+              `UPDATE committee_invitation
+                  SET status = 'canceled',
+                      responded_at = COALESCE(responded_at, NOW())
+                WHERE diplomatikhergasia_id = ? AND status = 'pending'`,
+              [thesisId]
+            );
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+
+    await conn.commit();
+    return res.json({ message: "Η απάντησή σας καταχωρήθηκε." });
+  } catch (err) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_) {}
+    }
+    console.error("respondToCommitteeInvitation error", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  } finally {
+    if (conn) conn.release();
+  }
 };
 
 exports.listMyCommitteeInvitations = async (req, res) => {
