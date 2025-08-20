@@ -1,0 +1,21 @@
+{
+  "students": [
+    {
+      "name": "Γιώργος Μαθητής",
+      "email": "giorgos@example.com",
+      "password": "1234",
+      "student_number": "2023003",
+      "department": "Πληροφορική",
+      "etos": 3
+    }
+  ],
+  "professors": [
+    {
+      "name": "Βαγγέλης Καθηγητής",
+      "email": "vaggelis@example.com",
+      "password": "12345",
+      "specialty": "ΤΝ",
+      "is_admin": 0
+    }
+  ]
+}

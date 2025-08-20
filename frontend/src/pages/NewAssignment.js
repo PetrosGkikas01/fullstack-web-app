@@ -14,10 +14,17 @@ const API_URL_BY_AM   = `${API_BASE}/api/student/by-number`; // /by-number/:code
 const NewAssignment = () => {
   const { auth } = useContext(AuthContext);
   const navigate = useNavigate();
+  const headers = { Authorization: `Bearer ${auth?.token}` };
 
   // Λίστα θεμάτων & επιλογή
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState("");
+  
+  const refreshTopics = async () => {
+    const res = await axios.get(API_URL_TOPICS, { headers });
+    const list = Array.isArray(res.data) ? res.data : [];
+    setTopics(list.filter((t) => t.status === "available"));
+  };
 
   // Κωδικός φοιτητή (ΑΜ) & ταυτοποίηση από backend
   const [studentCode, setStudentCode] = useState("");
@@ -32,24 +39,13 @@ const NewAssignment = () => {
 
   // Φόρτωση θεμάτων (μόνο όσα δεν έχουν ανατεθεί)
   useEffect(() => {
-    const loadTopics = async () => {
-      try {
-        setLoading(true);
-        setMessage("");
-        const headers = { Authorization: `Bearer ${auth?.token}` };
-        const res = await axios.get(API_URL_TOPICS, { headers });
-        const list = Array.isArray(res.data) ? res.data : [];
-        const available = list.filter((t) => t.status === "available");
-        setTopics(available);
-      } catch (e) {
-        console.error(e);
-        setMessageType("error");
-        setMessage("Αποτυχία φόρτωσης θεμάτων. Έλεγξε το token/endpoints.");
-      } finally {
-        setLoading(false);
-      }
+    
+    const load = async () => {
+      try { setLoading(true); setMessage(""); await refreshTopics(); }
+      catch (e) { setMessageType("error"); setMessage("Αποτυχία φόρτωσης θεμάτων."); }
+      finally { setLoading(false); }
     };
-    if (auth?.token) loadTopics();
+    if (auth?.token) load();
   }, [auth?.token]);
 
   // Debounced αναζήτηση φοιτητή με ΑΜ
@@ -91,15 +87,15 @@ const NewAssignment = () => {
 
     try {
       setSubmitting(true);
-      const headers = {
-        Authorization: `Bearer ${auth?.token}`,
-        "Content-Type": "application/json",
-      };
+
+      const headersWithJson = { ...headers, "Content-Type": "application/json" };
       const payload = { topic_id: Number(selectedTopic), student_id: Number(matchedStudent.id) 
       };
-      const res = await axios.post(API_URL_ASSIGN, payload, { headers });
+     
+      const res = await axios.post(API_URL_ASSIGN, payload, { headers: headersWithJson });
       setMessageType("success");
       setMessage(res.data?.message || "Η ανάθεση ολοκληρώθηκε επιτυχώς.");
+      await refreshTopics(); // ★ Ανανέωση για να φύγει από τη λίστα
       setSelectedTopic("");
       setStudentCode("");
       setMatchedStudent(null);

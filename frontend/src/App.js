@@ -11,6 +11,7 @@ import InsertData from "./pages/InsertData";
 import MyAssignment from "./pages/MyAssignment";
 import ManageThesis from "./pages/ManageThesis";
 import CommitteeInvitations from "./pages/CommitteeInvitations";
+import ProfessorManageTheses from "./pages/ProfessorManageTheses";
 function App() {
   return (
     <BrowserRouter>
@@ -35,6 +36,7 @@ function App() {
       <Route path="/MyAssignment" element={<MyAssignment />} />
       <Route path="/ManageThesis" element={<ManageThesis />} />
       <Route path="/committee-invitations" element={<CommitteeInvitations />} />
+      <Route path="/manage-theses" element={<ProfessorManageTheses />} />
     </Routes>
     
     </BrowserRouter>

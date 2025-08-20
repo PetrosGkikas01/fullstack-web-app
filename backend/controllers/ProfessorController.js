@@ -345,3 +345,4 @@ exports.listMyCommitteeInvitations = async (req, res) => {
     return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
+
