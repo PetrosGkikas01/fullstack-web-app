@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import "./CommitteeInvitations.css";
@@ -17,6 +18,7 @@ const Badge = ({ status }) => {
 
 const CommitteeInvitations = () => {
   const { auth } = useContext(AuthContext);
+  const navigate = useNavigate()
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${auth?.token}` }),
     [auth]
@@ -164,6 +166,18 @@ const CommitteeInvitations = () => {
             ))}
           </tbody>
         </table>
+
+        {/* Back button */}
+         <div className="page-footer">
+           <button
+             type="button"
+             className="back-button"
+             onClick={() => navigate(-1)}
+           >
+             Πίσω
+           </button>
+         </div>
+         
       </div>
     </div>
   );
