@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import "./ManageThesis.css";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:5000";
 
@@ -17,6 +18,7 @@ const renderBadge = (s) => {
 
 const ManageThesis = () => {
   const { auth } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -175,6 +177,18 @@ const ManageThesis = () => {
             προσκλήσεις.
           </div>
         )}
+
+        {/* Back button */}
+        <div className="page-footer">
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => navigate(-1)}
+          >
+            Πίσω
+          </button>
+        </div>
+        
       </div>
     </div>
   );

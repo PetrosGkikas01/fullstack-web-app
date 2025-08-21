@@ -2,12 +2,14 @@ import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import "./MyAssignment.css";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:5000";
 const API_URL_MY_ASSIGNMENT = `${API_BASE}/api/student/MyAssignment`;
 
 const MyAssignment = () => {
   const { auth } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [assignment, setAssignment] = useState(null);
   const [error, setError] = useState("");
@@ -92,6 +94,17 @@ const MyAssignment = () => {
             )}
           </div>
         )}
+
+        <div className="page-footer">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate(-1)}
+        >
+          Πίσω
+        </button>
+        </div>
+        
       </div>
     </div>
   );
