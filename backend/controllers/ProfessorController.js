@@ -346,3 +346,53 @@ exports.listMyCommitteeInvitations = async (req, res) => {
   }
 };
 
+exports.listManagedTheses = async (req, res) => {
+  const professorId = req.user.id;
+  const role = String(req.query.role || "supervisor").toLowerCase();
+  const statusCsv = String(req.query.status || "").trim();
+  const statuses = statusCsv ? statusCsv.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+  try {
+    let sql, params;
+    let whereStatus = "";
+    if (statuses.length) {
+      whereStatus = ` AND d.status IN (${statuses.map(() => "?").join(",")})`;
+    }
+
+    if (role === "committee") {
+      // Theses where this professor has accepted to be on the committee
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.assigned_at, d.pdf_file,
+          s.id AS student_id, s.name AS student_name, s.email AS student_email
+        FROM diplomatikhergasia d
+        JOIN student s ON s.id = d.student_id
+        JOIN committee_invitation ci
+             ON ci.diplomatikhergasia_id = d.id
+            AND ci.professor_id = ?
+            AND ci.status = 'accepted'
+        WHERE 1=1 ${whereStatus}
+        ORDER BY d.assigned_at DESC, d.id DESC
+      `;
+      params = [professorId, ...statuses];
+    } else {
+      // Default: supervisor
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.assigned_at, d.pdf_file,
+          s.id AS student_id, s.name AS student_name, s.email AS student_email
+        FROM diplomatikhergasia d
+        JOIN student s ON s.id = d.student_id
+        WHERE d.professor_id = ? ${whereStatus}
+        ORDER BY d.assigned_at DESC, d.id DESC
+      `;
+      params = [professorId, ...statuses];
+    }
+
+    const [rows] = await db.query(sql, params);
+    return res.json(rows);
+  } catch (err) {
+    console.error("listManagedTheses error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};

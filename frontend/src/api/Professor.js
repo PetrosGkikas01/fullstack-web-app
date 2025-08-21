@@ -59,3 +59,12 @@ export const assignTopicToStudent = async (topic_id, student_id) => {
   );
   return res.data;
 };
+
+export const fetchManagedTheses = async ({ role = "supervisor", status = "under_assignment,active" } = {}) => {
+  const token = localStorage.getItem("token");
+  const params = new URLSearchParams({ role, status });
+  const res = await axios.get(`/api/professor/theses?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};

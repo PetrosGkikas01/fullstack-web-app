@@ -40,6 +40,7 @@ router.post(
 router.get("/topics", verifyToken, ProfessorController.getMyTopics);
 router.get("/topics/:id", verifyToken, ProfessorController.getTopicById);
 router.delete("/topics/:id", verifyToken, ProfessorController.deleteTopic);
+router.get("/theses", verifyToken, ProfessorController.listManagedTheses);
 
 router.put("/topics/:id", verifyToken, (req, res, next) => {
   upload.single("pdf_file")(req, res, function (err) {
