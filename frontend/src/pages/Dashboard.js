@@ -59,7 +59,7 @@ const Dashboard = () => {
             )}
             {auth.role === "secretary" && (
               <>
-                <li onClick={() => {navigate("/ShowThesis"); setMenuOpen(false);}}>Προβολή ΔΕ</li>
+                <li onClick={() => {navigate("/secretary/theses"); setMenuOpen(false);}}>Προβολή ΔΕ</li>
                 <li onClick={() => {navigate("/InsertData"); setMenuOpen(false);}}>Εισαγωγή δεδομένων</li>
                 <li onClick={() => {navigate("/Thesis"); setMenuOpen(false);}}>Διαχείριση διπλωματικής εργασίας</li>
               </>

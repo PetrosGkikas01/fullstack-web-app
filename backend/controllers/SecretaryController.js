@@ -122,3 +122,121 @@ exports.importJSON = async (req, res) => {
     res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }
 };
+
+// GET /api/secretary/theses
+exports.listTheses = async (req, res) => {
+  try {
+   const [rows] = await db.query(
+      `SELECT
+        d.id   AS thesis_id,
+        d.title,
+        d.description,
+        d.status,
+        d.assigned_at,
+        CASE
+          WHEN d.assigned_at IS NULL THEN NULL
+          ELSE CONCAT(
+            FLOOR(TIMESTAMPDIFF(HOUR, d.assigned_at, NOW()) / 24), 'd ',
+            MOD(TIMESTAMPDIFF(HOUR, d.assigned_at, NOW()), 24), 'h'
+          )
+        END AS elapsed_since_assignment,
+
+        -- Επιβλέπων
+        sp.id        AS supervisor_id,
+        sp.name      AS supervisor_name,
+        sp.email     AS supervisor_email,
+        sp.specialty AS supervisor_specialty,
+
+        -- Τριμελής (accepted)
+        GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR ', ') AS committee_members,
+        COUNT(DISTINCT p.id) AS committee_count
+      FROM diplomatikhergasia d
+      LEFT JOIN Professor sp
+              ON sp.id = d.professor_id
+      LEFT JOIN committee_invitation ci
+              ON ci.diplomatikhergasia_id = d.id
+            AND ci.status = 'accepted'
+      LEFT JOIN Professor p
+              ON p.id = ci.professor_id
+      WHERE d.status IN ('active','under_review')
+      GROUP BY d.id, d.title, d.description, d.status, d.assigned_at,
+                sp.id, sp.name, sp.email, sp.specialty
+      ORDER BY d.id DESC`
+    );
+
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Secretariat listTheses error:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+// GET /api/secretary/theses/:id
+exports.getThesisDetails = async (req, res) => {
+  const thesisId = Number(req.params.id);
+    if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
+
+    try {
+      const [[summary]] = await db.query(
+    `SELECT
+      d.id   AS thesis_id,
+      d.title,
+      d.description,
+      d.status,
+      d.assigned_at,
+      CASE
+        WHEN d.assigned_at IS NULL THEN NULL
+        ELSE CONCAT(
+          FLOOR(TIMESTAMPDIFF(HOUR, d.assigned_at, NOW()) / 24), 'd ',
+          MOD(TIMESTAMPDIFF(HOUR, d.assigned_at, NOW()), 24), 'h'
+        )
+      END AS elapsed_since_assignment,
+
+      -- Επιβλέπων
+      sp.id        AS supervisor_id,
+      sp.name      AS supervisor_name,
+      sp.email     AS supervisor_email,
+      sp.specialty AS supervisor_specialty,
+
+      -- Σύνοψη τριμελούς
+      GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR ', ') AS committee_members,
+      COUNT(DISTINCT p.id) AS committee_count
+    FROM diplomatikhergasia d
+    LEFT JOIN Professor sp
+            ON sp.id = d.professor_id
+    LEFT JOIN committee_invitation ci
+            ON ci.diplomatikhergasia_id = d.id
+          AND ci.status = 'accepted'
+    LEFT JOIN Professor p
+            ON p.id = ci.professor_id
+    WHERE d.id = ?
+    GROUP BY d.id, d.title, d.description, d.status, d.assigned_at,
+              sp.id, sp.name, sp.email, sp.specialty`,
+    [thesisId]
+  );
+
+    if (!summary) {
+      return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε (ή δεν είναι σε ενεργή/υπό εξέταση κατάσταση)." });
+    }
+
+    const [members] = await db.query(
+      `SELECT
+         p.id        AS professor_id,
+         p.name      AS professor_name,
+         p.email     AS professor_email,
+         p.specialty AS professor_specialty
+       FROM committee_invitation ci
+       JOIN professor p ON p.id = ci.professor_id
+       WHERE ci.diplomatikhergasia_id = ?
+         AND ci.status = 'accepted'
+       ORDER BY p.name`,
+      [thesisId]
+    );
+
+    res.json({ summary, members });
+  } catch (err) {
+    console.error("Secretariat getThesisDetails error:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
