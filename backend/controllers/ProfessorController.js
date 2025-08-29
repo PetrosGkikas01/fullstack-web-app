@@ -310,8 +310,7 @@ exports.respondToCommitteeInvitation = async (req, res) => {
 exports.listMyCommitteeInvitations = async (req, res) => {
   try {
     const professorId = req.user.id;
-    const { status } = req.query; // optional: 'pending' | 'accepted' | 'rejected' | 'cancelled'
-
+    const { status } = req.query; 
     const params = [professorId];
     let where = "ci.professor_id = ?";
     if (status) {
@@ -360,7 +359,6 @@ exports.listManagedTheses = async (req, res) => {
     }
 
     if (role === "committee") {
-      // Theses where this professor has accepted to be on the committee
       sql = `
         SELECT 
           d.id, d.title, d.status, d.assigned_at, d.pdf_file,
@@ -376,7 +374,6 @@ exports.listManagedTheses = async (req, res) => {
       `;
       params = [professorId, ...statuses];
     } else {
-      // Default: supervisor
       sql = `
         SELECT 
           d.id, d.title, d.status, d.assigned_at, d.pdf_file,
@@ -393,6 +390,280 @@ exports.listManagedTheses = async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error("listManagedTheses error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.getThesisInvitations = async (req, res) => {
+  try {
+    const professorId = req.user.id;
+    const thesisId = Number(req.params.id);
+    if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
+
+    const [[own]] = await db.query(
+      `SELECT id FROM diplomatikhergasia WHERE id=? AND professor_id=?`,
+      [thesisId, professorId]
+    );
+    if (!own) return res.status(403).json({ error: "Επιτρέπεται μόνο στον επιβλέποντα." });
+
+    const [rows] = await db.query(
+      `SELECT
+         ci.id,
+         ci.status,
+         ci.invited_at,
+         ci.responded_at,
+         p.id   AS professor_id,
+         p.name AS professor_name,
+         p.email AS professor_email
+       FROM committee_invitation ci
+       JOIN professor p ON p.id = ci.professor_id
+       WHERE ci.diplomatikhergasia_id = ?
+       ORDER BY ci.invited_at ASC`,
+      [thesisId]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("getThesisInvitations error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.cancelAssignment = async (req, res) => {
+  const professorId = req.user.id;
+  const thesisId = Number(req.params.id);
+  if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
+
+  let conn;
+  try {
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    const [[th]] = await conn.query(
+      `SELECT id, professor_id, student_id, status, assigned_at
+         FROM diplomatikhergasia
+        WHERE id=? FOR UPDATE`,
+      [thesisId]
+    );
+    if (!th) { await conn.rollback(); return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε." }); }
+    if (th.professor_id !== professorId) { await conn.rollback(); return res.status(403).json({ error: "Μόνο ο επιβλέπων μπορεί να ακυρώσει." }); }
+    if (!th.student_id) { await conn.rollback(); return res.status(400).json({ error: "Δεν υπάρχει ανατεθειμένος φοιτητής." }); }
+
+    if (th.status === "under_assignment") {
+      await conn.query(`DELETE FROM committee_invitation WHERE diplomatikhergasia_id=?`, [thesisId]);
+      await conn.query(
+        `UPDATE diplomatikhergasia
+            SET student_id=NULL, status='available', assigned_at=NULL, grading_open=0
+          WHERE id=?`,
+        [thesisId]
+      );
+      await conn.commit();
+      return res.json({ message: "Η ανάθεση ακυρώθηκε (Υπό Ανάθεση)." });
+    }
+
+    if (th.status === "active") {
+      const { gs_number, gs_year } = req.body || {};
+      if (!gs_number || !gs_year) {
+        await conn.rollback();
+        return res.status(400).json({ error: "Απαιτούνται αριθμός & έτος Γ.Σ. για ακύρωση ενεργής ΔΕ." });
+      }
+
+      const [[ok]] = await conn.query(
+        `SELECT TIMESTAMPDIFF(YEAR, assigned_at, NOW()) >= 2 AS can_cancel
+           FROM diplomatikhergasia WHERE id=?`,
+        [thesisId]
+      );
+      if (!ok || !ok.can_cancel) {
+        await conn.rollback();
+        return res.status(400).json({ error: "Δεν έχουν παρέλθει 2 έτη από την ανάθεση." });
+      }
+
+      await conn.query(`DELETE FROM committee_invitation WHERE diplomatikhergasia_id=?`, [thesisId]);
+      await conn.query(
+        `UPDATE diplomatikhergasia
+            SET student_id=NULL, status='available', assigned_at=NULL, grading_open=0
+          WHERE id=?`,
+        [thesisId]
+      );
+      await conn.query(
+        `INSERT INTO thesis_cancellation
+           (diplomatikhergasia_id, by_professor_id, reason, gs_number, gs_year)
+         VALUES (?, ?, 'from_professor', ?, ?)`,
+        [thesisId, professorId, gs_number, gs_year]
+      );
+
+      await conn.commit();
+      return res.json({ message: "Η ανάθεση ακυρώθηκε (Ενεργή) και καταχωρήθηκε στη Γ.Σ." });
+    }
+
+    await conn.rollback();
+    return res.status(400).json({ error: "Η ακύρωση επιτρέπεται μόνο σε 'under_assignment' ή 'active'." });
+  } catch (err) {
+    if (conn) { try { await conn.rollback(); } catch (_) {} }
+    console.error("cancelAssignment error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+exports.addNote = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const professorId = req.user.id;
+    const note = String(req.body?.note_text || "").trim();
+    if (!note) return res.status(400).json({ error: "Κενό κείμενο." });
+    if (note.length > 300) return res.status(400).json({ error: "Μέγιστο 300 χαρακτήρες." });
+
+    const [[authz]] = await db.query(
+      `SELECT 1 AS ok
+         FROM diplomatikhergasia d
+         LEFT JOIN committee_invitation ci
+           ON ci.diplomatikhergasia_id=d.id
+          AND ci.professor_id=? AND ci.status='accepted'
+        WHERE d.id=? AND (d.professor_id=? OR ci.id IS NOT NULL)`,
+      [professorId, thesisId, professorId]
+    );
+    if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
+
+    await db.query(
+      `INSERT INTO thesis_note (diplomatikhergasia_id, professor_id, note_text)
+       VALUES (?,?,?)`,
+      [thesisId, professorId, note]
+    );
+    return res.status(201).json({ message: "Η σημείωση αποθηκεύτηκε." });
+  } catch (err) {
+    console.error("addNote error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.listMyNotes = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const professorId = req.user.id;
+    const [rows] = await db.query(
+      `SELECT id, note_text, created_at
+         FROM thesis_note
+        WHERE diplomatikhergasia_id=? AND professor_id=?
+        ORDER BY created_at DESC`,
+      [thesisId, professorId]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("listMyNotes error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.markUnderReview = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const professorId = req.user.id;
+
+    const [upd] = await db.query(
+      `UPDATE diplomatikhergasia
+          SET status='under_review'
+        WHERE id=? AND professor_id=? AND status='active'`,
+      [thesisId, professorId]
+    );
+    if (upd.affectedRows === 0) {
+      return res.status(400).json({ error: "Δεν επιτρέπεται (πρέπει να είστε επιβλέπων και status='active')." });
+    }
+    return res.json({ message: "Η κατάσταση άλλαξε σε «Υπό Εξέταση»." });
+  } catch (err) {
+    console.error("markUnderReview error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.openGrading = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const professorId = req.user.id;
+
+    const [upd] = await db.query(
+      `UPDATE diplomatikhergasia
+          SET grading_open=1
+        WHERE id=? AND professor_id=? AND status='under_review'`,
+      [thesisId, professorId]
+    );
+    if (upd.affectedRows === 0) {
+      return res.status(400).json({ error: "Δεν επιτρέπεται (status='under_review' & επιβλέπων)." });
+    }
+    return res.json({ message: "Η βαθμολόγηση ενεργοποιήθηκε." });
+  } catch (err) {
+    console.error("openGrading error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.submitGrade = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const professorId = req.user.id;
+
+    const b = req.body || {};
+    const keys = ["clarity","originality","methodology","writing","presentation"];
+    const vals = keys.map(k => Number(b[k]));
+    if (vals.some(v => !Number.isInteger(v) || v < 0 || v > 10)) {
+      return res.status(400).json({ error: "Τα κριτήρια πρέπει να είναι ακέραιοι 0–10." });
+    }
+    const total = vals.reduce((a,c)=>a+c, 0); 
+
+    const [[authz]] = await db.query(
+      `SELECT d.grading_open,
+              (d.professor_id=? OR EXISTS (
+                 SELECT 1 FROM committee_invitation
+                  WHERE diplomatikhergasia_id=d.id AND professor_id=? AND status='accepted'
+               )) AS can_grade
+         FROM diplomatikhergasia d
+        WHERE d.id=? AND d.status='under_review'`,
+      [professorId, professorId, thesisId]
+    );
+    if (!authz || !authz.grading_open || !authz.can_grade) {
+      return res.status(403).json({ error: "Δεν επιτρέπεται (grading_open=1 & μέλος τριμελούς/επιβλέπων)." });
+    }
+
+    await db.query(
+      `INSERT INTO thesis_grade
+         (diplomatikhergasia_id, professor_id, clarity, originality, methodology, writing, presentation, total)
+       VALUES (?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE
+         clarity=VALUES(clarity),
+         originality=VALUES(originality),
+         methodology=VALUES(methodology),
+         writing=VALUES(writing),
+         presentation=VALUES(presentation),
+         total=VALUES(total),
+         updated_at=NOW()`,
+      [thesisId, professorId, ...vals, total]
+    );
+
+    return res.status(201).json({ message: "Η βαθμολογία καταχωρήθηκε." });
+  } catch (err) {
+    console.error("submitGrade error:", err);
+    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
+exports.listGrades = async (req, res) => {
+  try {
+    const thesisId = Number(req.params.id);
+    const [rows] = await db.query(
+      `SELECT
+         tg.professor_id,
+         p.name AS professor_name,
+         tg.clarity, tg.originality, tg.methodology, tg.writing, tg.presentation, tg.total,
+         tg.created_at, tg.updated_at
+       FROM thesis_grade tg
+       JOIN professor p ON p.id = tg.professor_id
+       WHERE tg.diplomatikhergasia_id=?
+       ORDER BY p.name`,
+      [thesisId]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("listGrades error:", err);
     return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
