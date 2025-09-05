@@ -13,6 +13,7 @@ import ManageThesis from "./pages/ManageThesis";
 import CommitteeInvitations from "./pages/CommitteeInvitations";
 import ProfessorManageTheses from "./pages/ProfessorManageTheses";
 import SecretariatTheses from "./pages/SecretariatTheses";
+import ManageSecretaryThesis from "./pages/ManageSecretaryThesis";
 function App() {
   return (
     <BrowserRouter>
@@ -39,6 +40,7 @@ function App() {
       <Route path="/committee-invitations" element={<CommitteeInvitations />} />
       <Route path="/manage-theses" element={<ProfessorManageTheses />} />
       <Route path="/secretary/theses" element={<SecretariatTheses />} />
+      <Route path="/ManageSecretaryThesis" element={<ManageSecretaryThesis />} />
     </Routes>
     
     </BrowserRouter>

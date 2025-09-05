@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useMemo } from "react";
+import React, { useEffect, useState, useContext, useMemo, useCallback } from "react";
 import axios from "axios";
 import "./ProfessorManageTheses.css";
 import { AuthContext } from "../context/AuthContext";
@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 const API_URL_MANAGED = `${API_BASE}/api/professor/theses`;
-const API_URL_TOPICS  = `${API_BASE}/api/professor/topics`; 
+const API_URL_TOPICS  = `${API_BASE}/api/professor/topics`;
 
 const statusLabel = (s) =>
   ({
@@ -21,10 +21,9 @@ export default function ProfessorManageTheses() {
   const { auth } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  
-  const [role, setRole] = useState("supervisor"); 
+  // φίλτρα/λίστα
+  const [role, setRole] = useState("supervisor");
   const [statusFilter, setStatusFilter] = useState("under_assignment,active,under_review");
-
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -32,7 +31,7 @@ export default function ProfessorManageTheses() {
   // modal state
   const [openId, setOpenId] = useState(null);
   const [openItem, setOpenItem] = useState(null);
-  const [activeTab, setActiveTab] = useState("summary"); 
+  const [activeTab, setActiveTab] = useState("summary");
 
   // Invitations
   const [invLoading, setInvLoading] = useState(false);
@@ -49,6 +48,7 @@ export default function ProfessorManageTheses() {
   const [draft, setDraft] = useState(null);
   const [announcementText, setAnnouncementText] = useState("");
   const [annLoading, setAnnLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   // Grading
   const [gradingOpen, setGradingOpen] = useState(false);
@@ -71,7 +71,7 @@ export default function ProfessorManageTheses() {
     [auth?.token]
   );
 
-  
+  // Φόρτωση λίστας θεμάτων/ΔΕ
   useEffect(() => {
     const load = async () => {
       if (!auth?.token) return;
@@ -81,11 +81,10 @@ export default function ProfessorManageTheses() {
         const params = new URLSearchParams();
         params.set("role", role);
         if (statusFilter !== undefined) params.set("status", statusFilter);
-
         const { data } = await axios.get(`${API_URL_MANAGED}?${params.toString()}`, { headers });
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
-        
+        // fallback για παλιότερο backend
         if (role === "supervisor") {
           try {
             const { data } = await axios.get(API_URL_TOPICS, { headers });
@@ -105,7 +104,6 @@ export default function ProfessorManageTheses() {
     load();
   }, [auth?.token, role, statusFilter, headers]);
 
-  
   const openManage = (item) => {
     setOpenId(item.id);
     setOpenItem(item);
@@ -116,7 +114,7 @@ export default function ProfessorManageTheses() {
     setDraft(null);
     setAnnouncementText("");
     setGrades([]);
-    setGradingOpen(Boolean(item.grading_open)); 
+    setGradingOpen(Boolean(item.grading_open));
   };
 
   const closeManage = () => {
@@ -124,44 +122,69 @@ export default function ProfessorManageTheses() {
     setOpenItem(null);
   };
 
-  const thesisUrl = (path) => `${API_BASE}/api/professor/theses/${openId}${path}`;
-
-  const loadInvitations = async () => {
+  // Loaders (useCallback ώστε να μην προειδοποιεί το eslint)
+  const loadInvitations = useCallback(async () => {
     if (!openId) return;
     setInvLoading(true);
     try {
-      const { data } = await axios.get(thesisUrl("/invitations"), { headers });
+      const { data } = await axios.get(`${API_BASE}/api/professor/theses/${openId}/invitations`, { headers });
       setInvitations(Array.isArray(data) ? data : []);
     } catch {
       setInvitations([]);
     } finally {
       setInvLoading(false);
     }
-  };
+  }, [openId, headers]);
 
-  const cancelUnderAssignment = async () => {
-    if (!openId) return;
-    if (!window.confirm("Σίγουρα θέλεις να ακυρώσεις την ανάθεση; Θα διαγραφούν και οι προσκλήσεις.")) return;
-    try {
-      await axios.post(thesisUrl("/cancel-assignment"), {}, { headers });
-      alert("Η ανάθεση ακυρώθηκε.");
-      setItems((prev) => prev.map((x) => (x.id === openId ? { ...x, status: "available", student_id: null } : x)));
-      closeManage();
-    } catch (e) {
-      alert(e?.response?.data?.error || "Αποτυχία ακύρωσης.");
-    }
-  };
-
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     if (!openId) return;
     setNotesLoading(true);
     try {
-      const { data } = await axios.get(thesisUrl("/notes"), { headers });
+      const { data } = await axios.get(`${API_BASE}/api/professor/theses/${openId}/notes`, { headers });
       setNotes(Array.isArray(data) ? data : []);
     } catch {
       setNotes([]);
     } finally {
       setNotesLoading(false);
+    }
+  }, [openId, headers]);
+
+  const loadDraft = useCallback(async () => {
+    if (!openId) return;
+    setReviewLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/professor/theses/${openId}/draft`, { headers });
+      setDraft(data || null);
+    } catch {
+      setDraft(null);
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [openId, headers]);
+
+  const loadGrades = useCallback(async () => {
+    if (!openId) return;
+    setGradesLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/professor/theses/${openId}/grades`, { headers });
+      setGrades(Array.isArray(data) ? data : []);
+    } catch {
+      setGrades([]);
+    } finally {
+      setGradesLoading(false);
+    }
+  }, [openId, headers]);
+
+  const cancelUnderAssignment = async () => {
+    if (!openId) return;
+    if (!window.confirm("Σίγουρα θέλεις να ακυρώσεις την ανάθεση; Θα διαγραφούν και οι προσκλήσεις.")) return;
+    try {
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/cancel-assignment`, {}, { headers });
+      alert("Η ανάθεση ακυρώθηκε.");
+      setItems((prev) => prev.map((x) => (x.id === openId ? { ...x, status: "available", student_id: null } : x)));
+      closeManage();
+    } catch (e) {
+      alert(e?.response?.data?.error || "Αποτυχία ακύρωσης.");
     }
   };
 
@@ -171,7 +194,7 @@ export default function ProfessorManageTheses() {
     if (txt.length > 300) return alert("Μέγιστο 300 χαρακτήρες.");
     setNoteSaving(true);
     try {
-      await axios.post(thesisUrl("/notes"), { note_text: txt }, { headers });
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/notes`, { note_text: txt }, { headers });
       setNoteText("");
       await loadNotes();
     } catch (e) {
@@ -184,7 +207,7 @@ export default function ProfessorManageTheses() {
   const markUnderReview = async () => {
     if (!window.confirm("Μεταφορά σε «Υπό Εξέταση»;")) return;
     try {
-      await axios.post(thesisUrl("/mark-under-review"), {}, { headers });
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/mark-under-review`, {}, { headers });
       alert("Η κατάσταση άλλαξε σε «Υπό Εξέταση».");
       setItems((prev) => prev.map((x) => (x.id === openId ? { ...x, status: "under_review" } : x)));
       setOpenItem((prev) => (prev ? { ...prev, status: "under_review" } : prev));
@@ -198,7 +221,7 @@ export default function ProfessorManageTheses() {
     if (!gs_number || !gs_year) return alert("Συμπλήρωσε αριθμό και έτος Γ.Σ.");
     if (!window.confirm("Σίγουρα; Θα επιστρέψει σε «Διαθέσιμη» και θα χαθούν οι συσχετίσεις.")) return;
     try {
-      await axios.post(thesisUrl("/cancel-assignment"), { gs_number, gs_year }, { headers });
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/cancel-assignment`, { gs_number, gs_year }, { headers });
       alert("Ακυρώθηκε η ενεργή ανάθεση.");
       setItems((prev) => prev.map((x) => (x.id === openId ? { ...x, status: "available", student_id: null } : x)));
       closeManage();
@@ -207,24 +230,11 @@ export default function ProfessorManageTheses() {
     }
   };
 
-  const loadDraft = async () => {
-    if (!openId) return;
-    setReviewLoading(true);
-    try {
-      const { data } = await axios.get(thesisUrl("/draft"), { headers });
-      setDraft(data || null);
-    } catch {
-      setDraft(null);
-    } finally {
-      setReviewLoading(false);
-    }
-  };
-
   const loadAnnouncement = async () => {
     setAnnLoading(true);
     setAnnouncementText("");
     try {
-      const { data } = await axios.get(thesisUrl("/announcement"), { headers });
+      const { data } = await axios.get(`${API_BASE}/api/professor/theses/${openId}/announcement`, { headers });
       setAnnouncementText(data?.text || "");
     } catch (e) {
       setAnnouncementText("");
@@ -234,26 +244,32 @@ export default function ProfessorManageTheses() {
     }
   };
 
-  const openGrading = async () => {
+const publishAnnouncement = async () => {
+  const txt = announcementText.trim();
+  if (!txt) return alert("Δεν υπάρχει κείμενο ανακοίνωσης.");
+  setPublishing(true);
+  try {
+    const { data } = await axios.post(
+      `${API_BASE}/api/professor/theses/${openId}/announcement`,
+      {},
+      { headers }
+    );
+    alert("Η ανακοίνωση δημοσιεύτηκε." + (data?.id ? ` (#${data.id})` : ""));
+  } catch (e) {
+    alert(e?.response?.data?.error || "Αποτυχία δημοσίευσης.");
+  } finally {
+    setPublishing(false);
+  }
+};
+
+
+  const openGradingAction = async () => {
     try {
-      await axios.post(thesisUrl("/grading/open"), {}, { headers });
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/grading/open`, {}, { headers });
       setGradingOpen(true);
       alert("Η βαθμολόγηση ενεργοποιήθηκε.");
     } catch (e) {
       alert(e?.response?.data?.error || "Αποτυχία ενεργοποίησης.");
-    }
-  };
-
-  const loadGrades = async () => {
-    if (!openId) return;
-    setGradesLoading(true);
-    try {
-      const { data } = await axios.get(thesisUrl("/grades"), { headers });
-      setGrades(Array.isArray(data) ? data : []);
-    } catch {
-      setGrades([]);
-    } finally {
-      setGradesLoading(false);
     }
   };
 
@@ -268,7 +284,7 @@ export default function ProfessorManageTheses() {
     }
     setGradeSaving(true);
     try {
-      await axios.post(thesisUrl("/grades"), payload, { headers });
+      await axios.post(`${API_BASE}/api/professor/theses/${openId}/grades`, payload, { headers });
       await loadGrades();
       alert("Η βαθμολογία καταχωρήθηκε.");
     } catch (e) {
@@ -278,13 +294,14 @@ export default function ProfessorManageTheses() {
     }
   };
 
+  // Αυτό φορτώνει τα δεδομένα της κάθε καρτέλας όταν αλλάζει καρτέλα/αντικείμενο
   useEffect(() => {
     if (!openItem) return;
-    if (activeTab === "invitations" && openItem.status === "under_assignment") loadInvitations(); 
-    if (activeTab === "notes") loadNotes(); 
-    if (activeTab === "review" && openItem.status === "under_review") loadDraft(); 
-    if (activeTab === "grading" && openItem.status === "under_review") loadGrades(); 
-  }, [activeTab, openItem]); 
+    if (activeTab === "invitations" && openItem.status === "under_assignment") loadInvitations();
+    if (activeTab === "notes") loadNotes();
+    if (activeTab === "review" && openItem.status === "under_review") loadDraft();
+    if (activeTab === "grading" && openItem.status === "under_review") loadGrades();
+  }, [activeTab, openItem, loadInvitations, loadNotes, loadDraft, loadGrades]);
 
   return (
     <div className="page">
@@ -552,12 +569,20 @@ export default function ProfessorManageTheses() {
                       <div className="muted small">
                         Draft από {draft.student_name} {draft.student_email ? `(${draft.student_email})` : ""} —
                         {draft.uploaded_at ? ` ανέβηκε ${new Date(draft.uploaded_at).toLocaleString("el-GR")}` : ""}
+                        {/* Αν το τελευταίο "draft" είναι link, άνοιξέ το απευθείας.
+                            Αλλιώς δώσε λήψη από τον static φάκελο /uploads με το file_path */}
                         {draft.file_name ? (
                           <>
                             {" • "}
-                            <a href={`${API_BASE}/uploads/${draft.file_name}`} target="_blank" rel="noreferrer">
-                              Λήψη αρχείου
-                            </a>
+                            {draft.file_name === "link" ? (
+                              <a href={draft.file_path} target="_blank" rel="noreferrer">
+                                Άνοιγμα συνδέσμου
+                              </a>
+                            ) : (
+                              <a href={`${API_BASE}/uploads/${draft.file_path}`} target="_blank" rel="noreferrer">
+                                Λήψη αρχείου
+                              </a>
+                            )}
                           </>
                         ) : null}
                       </div>
@@ -573,6 +598,15 @@ export default function ProfessorManageTheses() {
                           <button className="btn" onClick={loadAnnouncement} disabled={annLoading}>
                             {annLoading ? "Δημιουργία..." : "Παραγωγή ανακοίνωσης παρουσίασης"}
                           </button>
+                          {" "}
+                          <button
+                            className="btn btn-secondary"
+                            onClick={publishAnnouncement}
+                            disabled={publishing || !announcementText.trim()}
+                            title={!announcementText.trim() ? "Πρώτα παραγωγή ανακοίνωσης" : "Δημοσίευση"}
+                          >
+                            {publishing ? "Δημοσίευση..." : "Δημοσίευση ανακοίνωσης"}
+                          </button>
                         </div>
                         <pre className="announcement-box">{announcementText || "—"}</pre>
                       </>
@@ -587,7 +621,7 @@ export default function ProfessorManageTheses() {
                   <div className="card-body">
                     {!gradingOpen && role === "supervisor" && (
                       <div className="mb-1">
-                        <button className="btn" onClick={openGrading}>
+                        <button className="btn" onClick={openGradingAction}>
                           Άνοιγμα βαθμολόγησης
                         </button>
                       </div>
