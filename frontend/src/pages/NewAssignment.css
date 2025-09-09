@@ -9,7 +9,6 @@
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* ====== Card ====== */
 .card {
   width: 100%;
   max-width: 640px;
@@ -21,22 +20,20 @@
   box-sizing: border-box;
 }
 
-/* ====== Header ====== */
 .title {
   margin: 0 0 8px;
   font-size: 22px;
   font-weight: 700;
-  color: #0f172a; /* slate-900 */
+  color: #0f172a; 
   letter-spacing: 0.2px;
 }
 
 .subtitle {
   margin: 0 0 18px;
-  color: #6b7280; /* gray-500 */
+  color: #6b7280; 
   font-size: 14px;
 }
 
-/* ====== Form ====== */
 .form {
   display: flex;
   flex-direction: column;
@@ -45,15 +42,14 @@
 
 .label {
   font-size: 13px;
-  color: #374151; /* gray-700 */
+  color: #374151;
   margin-top: 8px;
 }
 
-/* Inputs/selects styled like Create Topic */
 .input {
   width: 100%;
-  border: 1px solid #e5e7eb;   /* gray-300 */
-  background: #f9fafb;         /* gray-50 */
+  border: 1px solid #e5e7eb;  
+  background: #f9fafb;         
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 14px;
@@ -64,27 +60,24 @@
 }
 
 .input:focus {
-  border-color: #2563eb;        /* primary */
+  border-color: #2563eb;        
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-/* Tiny helper text */
 .muted {
-  color: #6b7280;               /* gray-500 */
+  color: #6b7280;              
   margin: 6px 2px 0 2px;
 }
 .small { font-size: 12px; }
 
-/* ====== Inline AM (student code) hint ====== */
 .hint {
   margin-top: 6px;
   font-size: 13px;
 }
-.hint.ok  { color: #065f46; }   /* green-800 */
-.hint.bad { color: #b91c1c; }   /* red-700 */
+.hint.ok  { color: #065f46; }   
+.hint.bad { color: #b91c1c; }   
 
-/* ====== Messages ====== */
 .msg {
   margin-top: 8px;
   font-size: 14px;
@@ -111,7 +104,6 @@
   border-color: #bfdbfe;
 }
 
-/* ====== Actions / Buttons ====== */
 .actions {
   display: flex;
   gap: 12px;
@@ -137,7 +129,6 @@
   transform: translateY(1px);
 }
 
-/* Primary = solid blue (same as Create Topic primary) */
 .btn.primary {
   background: #2563eb;
   color: #ffffff;
@@ -149,7 +140,6 @@
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
 }
 
-/* Ghost/secondary = white with subtle border */
 .btn.ghost {
   background: #ffffff;
   color: #374151;
@@ -160,7 +150,6 @@
   background: #f9fafb;
 }
 
-/* ====== Responsive tweaks ====== */
 @media (max-width: 480px) {
   .new-assignment-page { padding: 24px 12px; }
   .card { padding: 20px; border-radius: 12px; }

@@ -1,14 +1,11 @@
-// src/api/Student.js
 import axios from "axios";
 
 const API = axios.create({
   baseURL: "http://localhost:5000/api/student",
 });
 
-// helper για token header
 const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
 
-// --------- Auth ----------
 export const registerStudent = async (data) => {
   const res = await API.post("/register", data);
   return res.data;
@@ -19,7 +16,6 @@ export const loginStudent = async (data) => {
   return res.data;
 };
 
-// --------- Profile ----------
 export const updateProfile = async (token, data) => {
   const res = await API.put("/update-profile", data, { headers: authHeader(token) });
   return res.data;
@@ -30,7 +26,6 @@ export const getMe = async (token) => {
   return res.data;
 };
 
-// --------- Committee (Υπό ανάθεση) ----------
 export const listProfessorsForCommittee = async (token) => {
   const res = await API.get("/committee/professors", { headers: authHeader(token) });
   return res.data;
@@ -51,7 +46,6 @@ export const cancelInvitation = async (token, id) => {
   return res.data;
 };
 
-// --------- Υπό εξέταση ----------
 export const uploadDraft = async (token, thesisId, file) => {
   const form = new FormData();
   form.append("draft", file);

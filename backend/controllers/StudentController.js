@@ -1,12 +1,7 @@
-// controllers/StudentController.js
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-/* -------------------------------------------------------
- * Helper: Επιστρέφει τη ΔΕ αν ανήκει στον συγκεκριμένο φοιτητή
- *  -> { id, student_id, status } ή null
- * ----------------------------------------------------- */
 async function ensureOwnThesis(studentId, thesisId, connOrDb = db) {
   if (!Number.isInteger(thesisId)) return null;
   const [[row]] = await connOrDb.query(
@@ -18,10 +13,6 @@ async function ensureOwnThesis(studentId, thesisId, connOrDb = db) {
   );
   return row || null;
 }
-
-/* =========================
- * Auth / Profile
- * ======================= */
 
 exports.register = async (req, res) => {
   const { name, email, password, student_number, department, etos } = req.body;
@@ -97,10 +88,6 @@ exports.getMe = async (req, res) => {
   }
 };
 
-/* =========================
- * Lookups
- * ======================= */
-
 exports.listAll = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -130,10 +117,6 @@ exports.getByNumber = async (req, res) => {
     res.status(500).json({ error: "Lookup failed" });
   }
 };
-
-/* =========================
- * Ανάθεση / Επιβλέπων
- * ======================= */
 
 exports.getMyAssignment = async (req, res) => {
   const student_id = req.user?.id;
@@ -172,10 +155,6 @@ exports.getMyAssignment = async (req, res) => {
     return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
-
-/* =========================
- * Τριμελής – προσκλήσεις
- * ======================= */
 
 exports.listProfessorsForCommittee = async (req, res) => {
   try {
@@ -309,10 +288,6 @@ exports.cancelCommitteeInvitation = async (req, res) => {
   }
 };
 
-/* =========================
- * Υλικό / Drafts
- * ======================= */
-
 exports.uploadDraft = async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -325,7 +300,7 @@ exports.uploadDraft = async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "Δεν βρέθηκε αρχείο." });
 
     const fileName = req.file.originalname;
-    const filePath = req.file.filename; // αποθηκεύεται στο /uploads
+    const filePath = req.file.filename; 
 
     await db.query(
       `INSERT INTO fileupload (file_name, file_path, uploaded_by, DiplomatikhErgasia_id)
@@ -393,10 +368,6 @@ exports.listMaterials = async (req, res) => {
   }
 };
 
-/* =========================
- * Παρουσίαση / Νημερτής / Πρακτικό
- * ======================= */
-
 exports.setPresentation = async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -407,8 +378,6 @@ exports.setPresentation = async (req, res) => {
     if (!["in_person", "online"].includes(String(mode))) {
       return res.status(400).json({ error: "mode: 'in_person' ή 'online'." });
     }
-
-    // Δέξου ISO "YYYY-MM-DDTHH:MM" και κάνε το MySQL friendly
     if (typeof exam_datetime === "string") {
       exam_datetime = exam_datetime.replace("T", " ");
     }
@@ -496,7 +465,6 @@ exports.viewExamMinutes = async (req, res) => {
     const own = await ensureOwnThesis(studentId, thesisId);
     if (!own) return res.status(403).json({ error: "Δεν έχετε πρόσβαση σε αυτή τη ΔΕ." });
 
-    // 1) stored πρακτικό (αν υπάρχει)
     try {
       const [[m]] = await db.query(
         `SELECT html FROM thesis_minutes WHERE diplomatikhergasia_id=?`,
@@ -504,10 +472,9 @@ exports.viewExamMinutes = async (req, res) => {
       );
       if (m && m.html) return res.json({ html: m.html, source: "stored" });
     } catch (_) {
-      // πιθανόν να μην υπάρχει ο πίνακας
+      
     }
 
-    // 2) generate από βαθμούς
     const [grades] = await db.query(
       `SELECT p.name AS professor_name, tg.total, 
               tg.clarity, tg.originality, tg.methodology, tg.writing, tg.presentation

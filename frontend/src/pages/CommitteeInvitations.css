@@ -21,7 +21,7 @@
 .actions button { padding:.4rem .7rem; border:1px solid #ddd; border-radius:8px; cursor:pointer; }
 .actions .danger { border-color:#ffb3b3; }
 .thesis-title { font-weight: 600; }
-/* --- Back button footer --- */
+
 .page-footer {
   margin-top: 1rem;
   text-align: center;

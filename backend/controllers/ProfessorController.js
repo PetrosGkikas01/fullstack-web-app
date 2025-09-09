@@ -518,9 +518,6 @@ exports.cancelAssignment = async (req, res) => {
   }
 };
 
-/* =========================
- * Σημειώσεις (ιδιωτικές)
- * ======================= */
 
 exports.addNote = async (req, res) => {
   try {
@@ -571,9 +568,6 @@ exports.listMyNotes = async (req, res) => {
   }
 };
 
-/* =========================
- * Καταστάσεις / Βαθμολόγηση
- * ======================= */
 
 exports.markUnderReview = async (req, res) => {
   try {
@@ -688,15 +682,6 @@ exports.listGrades = async (req, res) => {
   }
 };
 
-/* =========================
- * ΝΕΑ: Draft & Ανακοίνωση παρουσίασης
- * ======================= */
-
-/**
- * GET /api/professor/theses/:id/draft
- * Επιστρέφει το τελευταίο draft που ανέβασε ο φοιτητής για τη συγκεκριμένη ΔΕ.
- * Απαιτεί: να είναι ο επιβλέπων ή αποδεκτό μέλος τριμελούς.
- */
 exports.getThesisLatestDraft = async (req, res) => {
   try {
     const professorId = req.user.id;
@@ -705,7 +690,6 @@ exports.getThesisLatestDraft = async (req, res) => {
       return res.status(400).json({ error: "Μη έγκυρο id" });
     }
 
-    // Έλεγχος πρόσβασης
     const [[authz]] = await db.query(
       `SELECT d.id
          FROM diplomatikhergasia d
@@ -719,7 +703,6 @@ exports.getThesisLatestDraft = async (req, res) => {
     );
     if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
-    // Τελευταίο αρχείο από τον φοιτητή (uploaded_by = student.id)
     const [[row]] = await db.query(
       `SELECT f.id, f.file_name, f.file_path, f.uploaded_at,
               s.name AS student_name, s.email AS student_email
@@ -741,10 +724,6 @@ exports.getThesisLatestDraft = async (req, res) => {
   }
 };
 
-/**
- * GET /api/professor/theses/:id/announcement
- * Παράγει κείμενο ανακοίνωσης παρουσίασης με βάση τα στοιχεία στη thesis_presentation.
- */
 exports.getPresentationAnnouncement = async (req, res) => {
   try {
     const professorId = req.user.id;
@@ -753,7 +732,6 @@ exports.getPresentationAnnouncement = async (req, res) => {
       return res.status(400).json({ error: "Μη έγκυρο id" });
     }
 
-    // Έλεγχος πρόσβασης
     const [[authz]] = await db.query(
       `SELECT d.id
          FROM diplomatikhergasia d
@@ -767,7 +745,6 @@ exports.getPresentationAnnouncement = async (req, res) => {
     );
     if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
-    // Παίρνουμε στοιχεία παρουσίασης + τίτλο + φοιτητή
     const [[row]] = await db.query(
       `SELECT tp.mode, tp.room, tp.join_link, tp.exam_datetime,
               d.title,
@@ -801,7 +778,7 @@ ${place}
     return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
-// --- Δημοσίευση ανακοίνωσης παρουσίασης από τον επιβλέποντα ---
+
 exports.publishAnnouncement = async (req, res) => {
   try {
     const professorId = req.user.id;
@@ -817,7 +794,6 @@ exports.publishAnnouncement = async (req, res) => {
       return res.status(400).json({ error: "Κενό κείμενο ανακοίνωσης." });
     }
 
-    // Επιτρεπόμενος μόνο ο επιβλέπων της συγκεκριμένης ΔΕ
     const [[own]] = await db.query(
       `SELECT id, title FROM diplomatikhergasia
         WHERE id=? AND professor_id=? LIMIT 1`,
@@ -829,7 +805,6 @@ exports.publishAnnouncement = async (req, res) => {
 
     const title = customTitle || `Παρουσίαση: ${own.title}`;
 
-    // Προσπάθησε με 'text' πεδίο. Αν δεν υπάρχει, κάνε fallback σε 'content'.
     try {
       await db.query(
         `INSERT INTO announcement (title, text, thesis_id, published_by_professor_id)
@@ -838,7 +813,6 @@ exports.publishAnnouncement = async (req, res) => {
       );
     } catch (e) {
       if (e && e.code === "ER_BAD_FIELD_ERROR") {
-        // Fallback: ο πίνακας έχει 'content' αντί για 'text' ή δεν έχει τα extra cols
         try {
           await db.query(
             `INSERT INTO announcement (title, content, thesis_id, published_by_professor_id)
@@ -846,7 +820,6 @@ exports.publishAnnouncement = async (req, res) => {
             [title, text, thesisId, professorId]
           );
         } catch (e2) {
-          // Τελικό fallback: μόνο title+content
           await db.query(
             `INSERT INTO announcement (title, content)
              VALUES (?,?)`,

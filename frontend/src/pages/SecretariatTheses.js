@@ -1,4 +1,3 @@
-// src/pages/SecretariatTheses.js
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import "./SecretariatTheses.css";

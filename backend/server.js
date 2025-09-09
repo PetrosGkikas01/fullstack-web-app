@@ -16,7 +16,6 @@ app.options(/.*/, cors(corsOptions));
 app.use(bodyParser.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
 
-// Routes
 const StudentRoutes = require("./routes/StudentRoutes");
 const ProfessorRoutes = require("./routes/ProfessorRoutes");
 const SecretaryRoutes = require("./routes/SecretaryRoutes");
@@ -34,8 +33,6 @@ app.use("/api/secretary", SecretaryRoutes);
 app.get("/", (req, res) => {
   res.send("Diplomatiki Backend Running ✅");
 });
-
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

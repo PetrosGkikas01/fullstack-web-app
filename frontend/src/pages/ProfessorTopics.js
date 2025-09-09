@@ -1,4 +1,3 @@
-// src/pages/ProfessorTopics.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./ProfessorTopics.css";
@@ -15,7 +14,6 @@ const ProfessorTopics = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const all = Array.isArray(res.data) ? res.data : [];
-      // ✅ δείξε ΜΟΝΟ διαθέσιμα (available)
       setTopics(all.filter(t => t.status === "available"));
     } catch (err) {
       alert("Σφάλμα: " + (err.response?.data?.error || err.message));

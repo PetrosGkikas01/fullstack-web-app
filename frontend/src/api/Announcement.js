@@ -10,6 +10,6 @@ export const fetchAnnouncement = async (token) => {
     return response.data;
   } catch (err) {
     console.error("Σφάλμα στο fetchAnnouncements:", err);
-    throw err; // ξαναρίχνει το error για να το πιάσει το React Query
+    throw err;
   }
 };

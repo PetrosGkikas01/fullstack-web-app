@@ -26,7 +26,7 @@ const Login = () => {
       }
     },
     onSuccess: (data) => {
-      login(data.token, form.role); // Αποθήκευση στο context & localStorage
+      login(data.token, form.role); 
       navigate("/dashboard");
     },
     onError: (err) => {

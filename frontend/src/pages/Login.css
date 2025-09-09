@@ -18,7 +18,7 @@
 input[name="email"] {
   margin-top: 10px; 
 }
-/* Input fields */
+
 .login-form input {
   width: 100%;
   padding: 12px 15px;
@@ -36,7 +36,6 @@ input[name="email"] {
   box-shadow: 0 0 5px rgba(79, 172, 254, 0.5);
 }
 
-/* Button */
 .login-form button {
   width: 100%;
   padding: 12px;

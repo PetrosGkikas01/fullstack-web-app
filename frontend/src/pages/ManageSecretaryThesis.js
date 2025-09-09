@@ -1,4 +1,3 @@
-// src/pages/ManageSecretaryThesis.js
 import React, { useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
 import {
@@ -31,19 +30,15 @@ export default function ManageSecretaryThesis() {
   const [selectedId, setSelectedId] = useState(null);
   const [details, setDetails] = useState(null);
 
-  // φορτωτές ενεργειών
   const [savingGS, setSavingGS] = useState(false);
   const [doingCancel, setDoingCancel] = useState(false);
   const [doingComplete, setDoingComplete] = useState(false);
 
-  // ΑΠ ΓΣ
   const [gsProtocol, setGsProtocol] = useState("");
-  // ακύρωση
   const [reasonText, setReasonText] = useState("");
   const [gsNumber, setGsNumber] = useState("");
   const [gsYear, setGsYear] = useState("");
 
-  // helper για καθαρό μήνυμα σφάλματος
   const showError = useCallback((e, fallback) => {
     const msg =
       e?.response?.data?.error ||
@@ -60,7 +55,6 @@ export default function ManageSecretaryThesis() {
     try {
       const data = await listTheses(auth.token);
       setRows(data || []);
-      // αν δεν έχει επιλεγεί κάτι, διάλεξε την 1η
       if (data?.length && !selectedId) {
         setSelectedId(data[0].thesis_id);
       }
@@ -160,7 +154,7 @@ export default function ManageSecretaryThesis() {
   return (
     <div className="sec-page">
       <div className="sec-grid">
-        {/* ΛΙΣΤΑ */}
+        
         <div className="panel">
           <div className="panel-header">
             <h2>ΔΕ σε εξέλιξη</h2>
@@ -210,7 +204,7 @@ export default function ManageSecretaryThesis() {
           </table>
         </div>
 
-        {/* ΛΕΠΤΟΜΕΡΕΙΕΣ */}
+        
         <div className="panel">
           <div className="panel-header">
             <h2>Λεπτομέρειες</h2>
@@ -251,7 +245,7 @@ export default function ManageSecretaryThesis() {
 
               <hr />
 
-              {/* ΑΠ ΓΣ */}
+              
               <div className="block">
                 <h3>ΑΠ ΓΣ</h3>
                 <div className="row">
@@ -267,7 +261,7 @@ export default function ManageSecretaryThesis() {
                 </div>
               </div>
 
-              {/* Ακύρωση ανάθεσης */}
+              
               <div className="block warn">
                 <h3>Ακύρωση Ανάθεσης</h3>
                 <input
@@ -303,7 +297,7 @@ export default function ManageSecretaryThesis() {
                 </p>
               </div>
 
-              {/* Περαίωση */}
+              
               <div className="block success">
                 <h3>Περαίωση ΔΕ</h3>
                 <p className="muted">

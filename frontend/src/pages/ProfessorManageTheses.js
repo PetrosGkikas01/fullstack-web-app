@@ -21,36 +21,30 @@ export default function ProfessorManageTheses() {
   const { auth } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // φίλτρα/λίστα
   const [role, setRole] = useState("supervisor");
   const [statusFilter, setStatusFilter] = useState("under_assignment,active,under_review");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // modal state
   const [openId, setOpenId] = useState(null);
   const [openItem, setOpenItem] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
 
-  // Invitations
   const [invLoading, setInvLoading] = useState(false);
   const [invitations, setInvitations] = useState([]);
 
-  // Notes
   const [notesLoading, setNotesLoading] = useState(false);
   const [notes, setNotes] = useState([]);
   const [noteText, setNoteText] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
 
-  // Review
   const [reviewLoading, setReviewLoading] = useState(false);
   const [draft, setDraft] = useState(null);
   const [announcementText, setAnnouncementText] = useState("");
   const [annLoading, setAnnLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  // Grading
   const [gradingOpen, setGradingOpen] = useState(false);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [grades, setGrades] = useState([]);
@@ -71,7 +65,6 @@ export default function ProfessorManageTheses() {
     [auth?.token]
   );
 
-  // Φόρτωση λίστας θεμάτων/ΔΕ
   useEffect(() => {
     const load = async () => {
       if (!auth?.token) return;
@@ -84,7 +77,6 @@ export default function ProfessorManageTheses() {
         const { data } = await axios.get(`${API_URL_MANAGED}?${params.toString()}`, { headers });
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
-        // fallback για παλιότερο backend
         if (role === "supervisor") {
           try {
             const { data } = await axios.get(API_URL_TOPICS, { headers });
@@ -122,7 +114,6 @@ export default function ProfessorManageTheses() {
     setOpenItem(null);
   };
 
-  // Loaders (useCallback ώστε να μην προειδοποιεί το eslint)
   const loadInvitations = useCallback(async () => {
     if (!openId) return;
     setInvLoading(true);
@@ -294,7 +285,6 @@ const publishAnnouncement = async () => {
     }
   };
 
-  // Αυτό φορτώνει τα δεδομένα της κάθε καρτέλας όταν αλλάζει καρτέλα/αντικείμενο
   useEffect(() => {
     if (!openItem) return;
     if (activeTab === "invitations" && openItem.status === "under_assignment") loadInvitations();
@@ -569,8 +559,6 @@ const publishAnnouncement = async () => {
                       <div className="muted small">
                         Draft από {draft.student_name} {draft.student_email ? `(${draft.student_email})` : ""} —
                         {draft.uploaded_at ? ` ανέβηκε ${new Date(draft.uploaded_at).toLocaleString("el-GR")}` : ""}
-                        {/* Αν το τελευταίο "draft" είναι link, άνοιξέ το απευθείας.
-                            Αλλιώς δώσε λήψη από τον static φάκελο /uploads με το file_path */}
                         {draft.file_name ? (
                           <>
                             {" • "}

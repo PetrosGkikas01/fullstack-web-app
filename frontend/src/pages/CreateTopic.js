@@ -40,7 +40,7 @@ const CreateTopic = () => {
     "Content-Type": "multipart/form-data",
   },
   withCredentials: true,
-  timeout: 10000 // 10 seconds
+  timeout: 10000 
 });
       alert("Το θέμα καταχωρήθηκε!");
       setForm({ title: "", description: "", pdf_file: null });

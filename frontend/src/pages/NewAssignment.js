@@ -1,22 +1,19 @@
-// src/pages/NewAssignment.js (GR)
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "./NewAssignment.css";
 
-// Προσαρμόζεις αν χρειάζεται:
 const API_BASE = "http://localhost:5000";
 const API_URL_TOPICS  = `${API_BASE}/api/professor/topics`;
 const API_URL_ASSIGN  = `${API_BASE}/api/professor/assign`;
-const API_URL_BY_AM   = `${API_BASE}/api/student/by-number`; // /by-number/:code
+const API_URL_BY_AM   = `${API_BASE}/api/student/by-number`; 
 
 const NewAssignment = () => {
   const { auth } = useContext(AuthContext);
   const navigate = useNavigate();
   const headers = { Authorization: `Bearer ${auth?.token}` };
 
-  // Λίστα θεμάτων & επιλογή
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState("");
   
@@ -26,18 +23,15 @@ const NewAssignment = () => {
     setTopics(list.filter((t) => t.status === "available"));
   };
 
-  // Κωδικός φοιτητή (ΑΜ) & ταυτοποίηση από backend
   const [studentCode, setStudentCode] = useState("");
   const [matchedStudent, setMatchedStudent] = useState(null);
   const [checking, setChecking] = useState(false);
 
-  // Κατάσταση UI
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // "success" | "error" | "info"
+  const [messageType, setMessageType] = useState("info"); 
 
-  // Φόρτωση θεμάτων (μόνο όσα δεν έχουν ανατεθεί)
   useEffect(() => {
     
     const load = async () => {
@@ -48,7 +42,6 @@ const NewAssignment = () => {
     if (auth?.token) load();
   }, [auth?.token]);
 
-  // Debounced αναζήτηση φοιτητή με ΑΜ
   useEffect(() => {
     const code = studentCode.trim();
     setMatchedStudent(null);
@@ -59,10 +52,9 @@ const NewAssignment = () => {
         setChecking(true);
         const headers = { Authorization: `Bearer ${auth?.token}` };
         const res = await axios.get(`${API_URL_BY_AM}/${encodeURIComponent(code)}`, { headers });
-        // Περιμένουμε { id, name, email, student_number }
         setMatchedStudent(res.data);
       } catch {
-        setMatchedStudent(null); // δεν βρέθηκε ή σφάλμα
+        setMatchedStudent(null); 
       } finally {
         setChecking(false);
       }
@@ -95,7 +87,7 @@ const NewAssignment = () => {
       const res = await axios.post(API_URL_ASSIGN, payload, { headers: headersWithJson });
       setMessageType("success");
       setMessage(res.data?.message || "Η ανάθεση ολοκληρώθηκε επιτυχώς.");
-      await refreshTopics(); // ★ Ανανέωση για να φύγει από τη λίστα
+      await refreshTopics(); 
       setSelectedTopic("");
       setStudentCode("");
       setMatchedStudent(null);
@@ -119,7 +111,7 @@ const NewAssignment = () => {
           <p className="msg info">Φόρτωση…</p>
         ) : (
           <form className="form" onSubmit={handleAssign}>
-            {/* Επιλογή Θέματος */}
+           
             <label className="label" htmlFor="topic">Θέμα</label>
             <select
               id="topic"
@@ -134,7 +126,6 @@ const NewAssignment = () => {
             </select>
             {topics.length === 0 && <p className="muted small">Δεν υπάρχουν διαθέσιμα θέματα.</p>}
 
-            {/* Κωδικός Φοιτητή (ΑΜ) */}
             <label className="label" htmlFor="studentCode">Κωδικός Φοιτητή (ΑΜ)</label>
             <input
               id="studentCode"
@@ -146,7 +137,6 @@ const NewAssignment = () => {
               autoComplete="off"
             />
 
-            {/* Ένδειξη ταύτισης */}
             {studentCode.trim() && (
               <p className={`hint ${matchedStudent ? "ok" : "bad"}`}>
                 {checking

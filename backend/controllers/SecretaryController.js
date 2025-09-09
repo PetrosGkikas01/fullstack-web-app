@@ -1,12 +1,8 @@
-// backend/controllers/SecretaryController.js
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const fs = require("fs/promises");
 
-/* =====================
- *  Auth
- * ===================== */
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
   try {
@@ -43,9 +39,6 @@ exports.login = async (req, res) => {
   }
 };
 
-/* =====================
- *  Helpers (upsert)
- * ===================== */
 async function upsertStudent(conn, s) {
   const hashed = await bcrypt.hash(s.password, 10);
   const sql = `
@@ -79,9 +72,6 @@ async function upsertProfessor(conn, p) {
   ]);
 }
 
-/* =====================
- *  Import JSON (students + professors)
- * ===================== */
 exports.importJSON = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Δεν εστάλη αρχείο" });
@@ -128,9 +118,6 @@ exports.importJSON = async (req, res) => {
   }
 };
 
-/* =====================
- *  Secretary -> Theses (list/details)
- * ===================== */
 exports.listTheses = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -252,9 +239,6 @@ exports.getThesisDetails = async (req, res) => {
   }
 };
 
-/* =====================
- *  Secretary Actions: GS Protocol / Cancel / Complete
- * ===================== */
 exports.setGSProtocol = async (req, res) => {
   try {
     const thesisId = Number(req.params.id);
@@ -295,10 +279,8 @@ exports.cancelThesis = async (req, res) => {
     );
     if (!d) { await conn.rollback(); return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε." }); }
 
-    // Διαγραφή προσκλήσεων τριμελούς (αν υπάρχουν)
     await conn.query(`DELETE FROM committee_invitation WHERE diplomatikhergasia_id=?`, [thesisId]);
 
-    // Καταγραφή ακύρωσης
     await conn.query(
       `INSERT INTO thesis_cancellation
          (diplomatikhergasia_id, by_professor_id, reason, gs_number, gs_year)
@@ -306,7 +288,6 @@ exports.cancelThesis = async (req, res) => {
       [thesisId, String(reasonText || "by_secretary"), String(gs_number), Number(gs_year)]
     );
 
-    // Επαναφορά θέματος σε διαθέσιμο
     await conn.query(
       `UPDATE diplomatikhergasia
           SET status='available',

@@ -3,7 +3,7 @@ import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import "./ManageThesis.css";
 import { useNavigate } from "react-router-dom";
-// ΝΕΟ: helpers
+
 import {
   uploadDraft, addMaterialLink, listMaterials,
   setPresentation, getPresentation, setNimerisUrl, getMinutes
@@ -28,31 +28,26 @@ const ManageThesis = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [status, setStatus] = useState("");           // status διπλωματικής
+  const [status, setStatus] = useState("");           
   const [acceptedCount, setAcceptedCount] = useState(0);
-  const [professors, setProfessors] = useState([]);   // διαθέσιμοι διδάσκοντες για πρόσκληση
-  const [invitations, setInvitations] = useState([]); // λίστα προσκλήσεων
+  const [professors, setProfessors] = useState([]);   
+  const [invitations, setInvitations] = useState([]); 
   const [selectedProfessor, setSelectedProfessor] = useState("");
 
-  // ΝΕΟ: δεδομένα Under Review
   const [thesisId, setThesisId] = useState(null);
-  const [tab, setTab] = useState("materials"); // materials | presentation | nimeris | minutes
+  const [tab, setTab] = useState("materials"); 
 
-  // materials
   const [materials, setMaterials] = useState([]);
   const [draftUploading, setDraftUploading] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [opBusy, setOpBusy] = useState(false);
 
-  // presentation
   const [presentation, setPresentationState] = useState({
     mode: "in_person", room: "", join_link: "", exam_datetime: ""
   });
 
-  // nimeris
   const [nimerisUrl, setNimerisUrlText] = useState("");
 
-  // minutes
   const [minutesHtml, setMinutesHtml] = useState("");
   const [minutesSource, setMinutesSource] = useState("");
 
@@ -76,32 +71,30 @@ const ManageThesis = () => {
       setInvitations(invRes.data?.invitations || []);
       setThesisId(invRes.data?.thesisId || null);
 
-      // Αν είμαστε σε under_review, φέρε presentation & materials & minutes
       if ((invRes.data?.status || "") === "under_review" && invRes.data?.thesisId) {
         const id = invRes.data.thesisId;
-        // presentation (αν υπάρχει)
         try {
           const pres = await getPresentation(auth.token, id);
           setPresentationState({
             mode: pres.mode || "in_person",
             room: pres.room || "",
             join_link: pres.join_link || "",
-            exam_datetime: pres.exam_datetime ? pres.exam_datetime.slice(0,16) : "" // YYYY-MM-DDTHH:mm
+            exam_datetime: pres.exam_datetime ? pres.exam_datetime.slice(0,16) : "" 
           });
-        } catch (_) { /* πιθανό 404, ok */ }
+        } catch (_) {  }
 
-        // materials
+        
         try {
           const mats = await listMaterials(auth.token, id);
           setMaterials(mats || []);
         } catch (_) {}
 
-        // minutes (αν υπάρξει)
+      
         try {
           const m = await getMinutes(auth.token, id);
           setMinutesHtml(m.html || "");
           setMinutesSource(m.source || "");
-        } catch (_) { /* μπορεί να μην υπάρχουν ακόμα */ }
+        } catch (_) {  }
       }
 
     } catch (err) {
@@ -116,7 +109,6 @@ const ManageThesis = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ----- ΥΠΟ ΑΝΑΘΕΣΗ handlers -----
   const onInvite = async () => {
     setError("");
     if (!selectedProfessor) return;
@@ -145,7 +137,6 @@ const ManageThesis = () => {
     }
   };
 
-  // ----- ΥΠΟ ΕΞΕΤΑΣΗ handlers -----
   const doUploadDraft = async (file) => {
     if (!file || !thesisId) return;
     setDraftUploading(true);
@@ -182,7 +173,6 @@ const ManageThesis = () => {
     setOpBusy(true);
     setError("");
     try {
-      // exam_datetime πρέπει να είναι "YYYY-MM-DDTHH:mm"
       const payload = { ...presentation };
       await setPresentation(auth.token, thesisId, payload);
     } catch (err) {
@@ -221,7 +211,6 @@ const ManageThesis = () => {
     }
   };
 
-  // ----- RENDER -----
   if (loading) {
     return (
       <div className="thesis-page">
@@ -249,7 +238,6 @@ const ManageThesis = () => {
 
         {status === "under_assignment" ? (
           <>
-            {/* ΥΠΟ ΑΝΑΘΕΣΗ */}
             <div className="invite-row">
               <label htmlFor="prof">Επιλογή διδάσκοντα για πρόσκληση:</label>
               <select
@@ -311,7 +299,6 @@ const ManageThesis = () => {
           </>
         ) : status === "under_review" ? (
           <>
-            {/* ΥΠΟ ΕΞΕΤΑΣΗ */}
             <div className="tabs">
               <button className={tab==="materials" ? "active" : ""} onClick={() => setTab("materials")}>Υλικό</button>
               <button className={tab==="presentation" ? "active" : ""} onClick={() => setTab("presentation")}>Παρουσίαση</button>
@@ -360,7 +347,7 @@ const ManageThesis = () => {
                         <td>
                           {m.file_name === "link"
                             ? <a href={m.file_path} target="_blank" rel="noreferrer">{m.file_path}</a>
-                            : <span className="muted">{m.file_path}</span> /* εμφανίζεται το stored filename — για download route μπορείς να κάνεις /uploads/:file */
+                            : <span className="muted">{m.file_path}</span> 
                           }
                         </td>
                         <td>{new Date(m.uploaded_at).toLocaleString()}</td>
@@ -458,7 +445,6 @@ const ManageThesis = () => {
           </div>
         )}
 
-        {/* Back button */}
         <div className="page-footer">
           <button
             type="button"

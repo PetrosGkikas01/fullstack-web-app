@@ -1,4 +1,3 @@
-// backend/routes/StudentRoutes.js
 const express = require("express");
 const router = express.Router();
 
@@ -7,10 +6,8 @@ const { verifyToken } = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
 
-// Health check
 router.get("/", (req, res) => res.json({ message: "Students API working ✅" }));
 
-// --- Προαιρετικό guard ρόλου: φοιτητής/τρια ---
 function ensureStudent(req, res, next) {
   if (!req.user || req.user.role !== "student") {
     return res.status(403).json({ error: "Απαιτείται ρόλος φοιτητή/τριας." });
@@ -18,16 +15,14 @@ function ensureStudent(req, res, next) {
   next();
 }
 
-// --- Multer για upload πρόχειρου (draft) ---
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, "..", "uploads")),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB
+  limits: { fileSize: 30 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
-    // Επιτρέπουμε pdf/doc/docx/zip/rar (προσαρμόζεις κατά βούληση)
     const okExt = [".pdf", ".doc", ".docx", ".zip", ".rar"].includes(
       path.extname(file.originalname).toLowerCase()
     );
@@ -43,7 +38,7 @@ router.post("/login", StudentController.login);
 router.put("/update-profile", verifyToken, ensureStudent, StudentController.updateProfile);
 router.get("/me", verifyToken, ensureStudent, StudentController.getMe);
 
-router.get("/all", verifyToken, StudentController.listAll); // (μπορεί να είναι και μόνο για γραμματεία/καθηγητές)
+router.get("/all", verifyToken, StudentController.listAll); 
 router.get("/by-number/:code", verifyToken, StudentController.getByNumber);
 
 router.get("/MyAssignment", verifyToken, ensureStudent, StudentController.getMyAssignment);

@@ -26,9 +26,9 @@ const CommitteeInvitations = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("pending"); // default: δείξε μόνο εκκρεμείς
+  const [filter, setFilter] = useState("pending"); 
   const [rows, setRows] = useState([]);
-  const [actingId, setActingId] = useState(null);  // για disable στα κουμπιά όταν στέλνουμε απάντηση
+  const [actingId, setActingId] = useState(null);  
 
   const fetchData = async () => {
     setLoading(true);
@@ -57,7 +57,7 @@ const CommitteeInvitations = () => {
     try {
       await axios.post(
         `${API_BASE}/api/professor/committee/respond`,
-        { invitation_id, action }, // 'accept' | 'reject'
+        { invitation_id, action }, 
         { headers }
       );
       await fetchData();
@@ -167,7 +167,7 @@ const CommitteeInvitations = () => {
           </tbody>
         </table>
 
-        {/* Back button */}
+        {}
          <div className="page-footer">
            <button
              type="button"

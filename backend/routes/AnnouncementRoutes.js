@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require("../config/db");
 const { verifyToken } = require("../middleware/auth");
 
-// επιτρέπουμε δημοσίευση σε καθηγητή ή γραμματεία
 function ensurePublisher(req, res, next) {
   const role = req.user?.role;
   if (role !== "professor" && role !== "secretary") {
@@ -12,7 +11,6 @@ function ensurePublisher(req, res, next) {
   next();
 }
 
-// Λίστα
 router.get("/", async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -25,7 +23,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Λεπτομέρεια
 router.get("/:id", async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -40,15 +37,12 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Δημοσίευση (δέχεται { title, text ή content })
 router.post("/publish", verifyToken, ensurePublisher, async (req, res) => {
   try {
     const title = String(req.body?.title || "").trim() || "Ανακοίνωση";
     const bodyText = String(req.body?.text || req.body?.content || "").trim();
     if (!bodyText) return res.status(400).json({ error: "Κενό κείμενο ανακοίνωσης." });
 
-    // Θα δοκιμάσουμε διαδοχικά διαφορετικές ονομασίες στήλης σώματος,
-    // ώστε να ταιριάξει στο schema σου (content|body|text|description).
     const candidates = [
       "INSERT INTO announcement (title, content) VALUES (?,?)",
       "INSERT INTO announcement (title, body) VALUES (?,?)",
@@ -66,9 +60,7 @@ router.post("/publish", verifyToken, ensurePublisher, async (req, res) => {
         if (insertedId) break;
       } catch (e) {
         lastErr = e;
-        // αν είναι άγνωστη στήλη, συνεχίζουμε στο επόμενο candidate
         if (e && e.code === "ER_BAD_FIELD_ERROR") continue;
-        // για οποιοδήποτε άλλο σφάλμα, το βγάζουμε
         throw e;
       }
     }

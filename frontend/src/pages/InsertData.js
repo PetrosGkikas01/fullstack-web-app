@@ -8,7 +8,7 @@ export default function InsertData() {
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [ok, setOk] = useState(null); // true|false για alert
+  const [ok, setOk] = useState(null); 
 
   const onBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -23,7 +23,7 @@ export default function InsertData() {
     }
     try {
       setBusy(true);
-      const res = await importJSON(file); // POST /api/secretary/import-json
+      const res = await importJSON(file); 
       setOk(true);
       setMsg(JSON.stringify(res, null, 2));
     } catch (e) {
