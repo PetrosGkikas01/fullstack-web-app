@@ -11,7 +11,6 @@ import {
   fetchLatestDraft,
   getPresentationAnnouncement,
   fetchThesisHistory,
-  submitThesisGrade,
 } from "../api/Professor";
 
 const ALL_STATUSES = [
@@ -72,26 +71,6 @@ export default function ProfessorThesesList() {
     announcement: null,
     history: null,
   });
-
-  // --- Grade form state ---
-  const [gradeForm, setGradeForm] = useState({
-    clarity: "", originality: "", methodology: "", writing: "", presentation: ""
-  });
-  const setGrade = (k, val) => {
-    if (val === "") return setGradeForm(f => ({ ...f, [k]: "" }));
-    const n = Math.max(0, Math.min(10, parseInt(val, 10) || 0));
-    setGradeForm(f => ({ ...f, [k]: n }));
-  };
-  const formTotal = useMemo(() => {
-    const nums = ["clarity","originality","methodology","writing","presentation"].map(k => Number(gradeForm[k]));
-    return nums.some(n => Number.isNaN(n)) ? null : nums.reduce((a,c)=>a+c,0);
-  }, [gradeForm]);
-  const formValid = useMemo(() => {
-    return ["clarity","originality","methodology","writing","presentation"].every(k => {
-      const v = Number(gradeForm[k]);
-      return Number.isInteger(v) && v >= 0 && v <= 10;
-    });
-  }, [gradeForm]);
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -161,104 +140,6 @@ export default function ProfessorThesesList() {
     load();
     return () => { cancelled = true; };
   }, [selected]);
-
-  // === Actions ===
-  const token = localStorage.getItem("token");
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
-
-  async function markUnderReview(thesisId) {
-    try {
-      await axios.patch(`/api/professor/theses/${thesisId}/under-review`, {}, auth);
-      queryClient.setQueryData(["prof-theses-list", role], (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((row) =>
-          row.id === thesisId ? { ...row, status: "under_review" } : row
-        );
-      });
-      setSelected((prev) => (prev && prev.id === thesisId ? { ...prev, status: "under_review" } : prev));
-      queryClient.invalidateQueries({ queryKey: ["prof-theses-list"] });
-      if (!statusSet.has("under_review")) {
-        window.alert('Η κατάσταση έγινε "Υπό εξέταση". Με τα τρέχοντα φίλτρα ίσως να μην εμφανίζεται στη λίστα.');
-      } else {
-        window.alert("Έγινε Υπό Εξέταση");
-      }
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("markUnderReview failed:", e);
-    }
-  }
-
-  async function openGrading(thesisId) {
-    try {
-      await axios.patch(`/api/professor/theses/${thesisId}/grading/open`, {}, auth);
-      window.alert("Η βαθμολόγηση ενεργοποιήθηκε");
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("openGrading failed:", e);
-    }
-  }
-
-  async function cancelAssignment(thesisId, status) {
-    try {
-      if (status === "under_assignment") {
-        await axios.delete(`/api/professor/theses/${thesisId}/assignment`, auth);
-      } else if (status === "active") {
-        const gs_number = window.prompt("Αριθμός Γ.Σ. για ακύρωση ενεργής ΔΕ:");
-        const gs_year = window.prompt("Έτος Γ.Σ.:");
-        if (!gs_number || !gs_year) return;
-        await axios.post(`/api/professor/theses/${thesisId}/cancel-assignment`, { gs_number, gs_year }, auth);
-      } else {
-        window.alert("Η ακύρωση επιτρέπεται μόνο σε υπό ανάθεση ή ενεργή.");
-        return;
-      }
-      window.alert("Η ανάθεση ακυρώθηκε");
-      setSelected(null);
-      queryClient.invalidateQueries({ queryKey: ["prof-theses-list"] });
-      refetch();
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("cancelAssignment failed:", e);
-    }
-  }
-
-  async function publishAnnouncement(thesisId) {
-    try {
-      const text = window.prompt("Κείμενο ανακοίνωσης παρουσίασης:");
-      if (!text) return;
-      await axios.post(`/api/professor/theses/${thesisId}/announcement`, { text }, auth);
-      window.alert("Η ανακοίνωση δημοσιεύτηκε");
-      setDetails(prev => ({ ...(prev || {}), announcement: { text } }));
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("publishAnnouncement failed:", e);
-    }
-  }
-
-  async function onSubmitGrade() {
-    if (!selected) return;
-    if (!formValid) { window.alert("Συμπλήρωσε ακέραιους 0–10 σε όλα τα πεδία."); return; }
-    try {
-      await submitThesisGrade(selected.id, {
-        clarity: Number(gradeForm.clarity),
-        originality: Number(gradeForm.originality),
-        methodology: Number(gradeForm.methodology),
-        writing: Number(gradeForm.writing),
-        presentation: Number(gradeForm.presentation),
-      });
-      window.alert("Η βαθμολογία καταχωρήθηκε.");
-      const fresh = await fetchThesisGrades(selected.id);
-      const avg   = fresh.length ? (fresh.reduce((a,c)=>a+Number(c.total||0),0)/fresh.length/5).toFixed(2) : null;
-      setDetails(d => ({ ...(d||{}), grades: fresh, avgTotal: avg }));
-      setGradeForm({ clarity:"", originality:"", methodology:"", writing:"", presentation:"" });
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-    }
-  }
 
   return (
     <div className="page">
@@ -349,41 +230,6 @@ export default function ProfessorThesesList() {
               )}
             </p>
 
-            {/* Action buttons — μόνο για επιβλέποντα (2×2 grid) */}
-            {selected.role === "supervisor" && (
-              <div className="thesis-actions">
-                <button
-                  className="btn"
-                  onClick={() => markUnderReview(selected.id)}
-                  disabled={selected.status !== "active"}
-                  title="Διαθέσιμο μόνο όταν είναι 'active'"
-                >
-                  Μετάβαση σε «Υπό Εξέταση»
-                </button>
-
-                <button
-                  className="btn"
-                  onClick={() => openGrading(selected.id)}
-                  disabled={selected.status !== "under_review"}
-                  title="Διαθέσιμο μόνο όταν είναι 'under_review'"
-                >
-                  Ενεργοποίηση Βαθμολόγησης
-                </button>
-
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => cancelAssignment(selected.id, selected.status)}
-                  disabled={!(selected.status === "under_assignment" || selected.status === "active")}
-                >
-                  Ακύρωση Ανάθεσης
-                </button>
-
-                <button className="btn" onClick={() => publishAnnouncement(selected.id)}>
-                  Δημοσίευση Ανακοίνωσης
-                </button>
-              </div>
-            )}
-
             {/* Committee / Invitations */}
             <section className="section">
               <h4>Τριμελής</h4>
@@ -404,91 +250,39 @@ export default function ProfessorThesesList() {
               </div>
             </section>
 
-            {/* Grade form (όψη όπως στη Διαχείριση) */}
+            {/* Grades */}
             <section className="section">
-              <h4>Βαθμολόγηση</h4>
+              <h4>Βαθμοί</h4>
               <div className="section-content">
-                {selected.status !== "under_review" ? (
-                  <p>Η υποβολή βαθμού είναι διαθέσιμη μόνο όταν η διπλωματική είναι <em>Υπό εξέταση</em>.</p>
-                ) : !selected.grading_open ? (
-                  <p>Η βαθμολόγηση δεν έχει ενεργοποιηθεί ακόμη από τον/την επιβλέποντα/ουσα.</p>
-                ) : (
-                  <div className="grade-form">
-                    <div className="grade-row">
-                      <div className="grade-field">
-                        <label>Σαφήνεια</label>
-                        <input type="number" min="0" max="10" step="1"
-                          value={gradeForm.clarity} onChange={e => setGrade("clarity", e.target.value)} />
-                      </div>
-                      <div className="grade-field">
-                        <label>Πρωτοτυπία</label>
-                        <input type="number" min="0" max="10" step="1"
-                          value={gradeForm.originality} onChange={e => setGrade("originality", e.target.value)} />
-                      </div>
-                      <div className="grade-field">
-                        <label>Μεθοδολογία</label>
-                        <input type="number" min="0" max="10" step="1"
-                          value={gradeForm.methodology} onChange={e => setGrade("methodology", e.target.value)} />
-                      </div>
-                      <div className="grade-field">
-                        <label>Συγγραφή</label>
-                        <input type="number" min="0" max="10" step="1"
-                          value={gradeForm.writing} onChange={e => setGrade("writing", e.target.value)} />
-                      </div>
-                      <div className="grade-field">
-                        <label>Παρουσίαση</label>
-                        <input type="number" min="0" max="10" step="1"
-                          value={gradeForm.presentation} onChange={e => setGrade("presentation", e.target.value)} />
-                      </div>
-                    </div>
-
-                    <div className="grade-actions">
-                      <button className="btn" onClick={onSubmitGrade} disabled={!formValid}>Καταχώρηση βαθμού</button>
-                      <button
-                        className="btn btn-light"
-                        onClick={async () => {
-                          const fresh = await fetchThesisGrades(selected.id);
-                          const avg = fresh.length ? (fresh.reduce((a,c)=>a+Number(c.total||0),0)/fresh.length/5).toFixed(2) : null;
-                          setDetails(d => ({ ...(d||{}), grades: fresh, avgTotal: avg }));
-                        }}
-                      >
-                        Ανανέωση βαθμών
-                      </button>
-                      <div className="grade-total">Σύνολο: {formTotal ?? "—"}</div>
-                    </div>
-
-                    <div className="grade-hint">Συμπλήρωσε ακέραιους 0–10 σε κάθε πεδίο.</div>
-                  </div>
-                )}
-
-                {/* Πίνακας/μήνυμα υφιστάμενων βαθμών */}
                 {Array.isArray(details.grades) && details.grades.length > 0 ? (
-                  <>
-                    <p style={{ marginTop: 10 }}><strong>Μέσος τελικός:</strong> {details.avgTotal} / 10</p>
-                    <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
-                      <thead>
-                        <tr>
-                          <th>Μέλος</th>
-                          <th>Σαφήνεια</th>
-                          <th>Πρωτοτυπία</th>
-                          <th>Μεθοδολογία</th>
-                          <th>Συγγραφή</th>
-                          <th>Παρουσίαση</th>
-                          <th>Σύνολο</th>
+                 <>
+                  <p style={{ marginTop: 10 }}>
+                    <strong>Μέσος τελικός:</strong> {details.avgTotal} / 10
+                  </p>
+                  <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th>Καθηγητής</th>
+                        <th>Συγγραφή</th>
+                        <th>Παρουσίαση</th>
+                        <th>Μεθοδολογία</th>
+                        <th>Πρωτοτυπία</th>
+                        <th>Σαφήνεια</th>
+                        <th>Σύνολο</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {details.grades.map(g => (
+                        <tr key={g.id}>
+                          <td>{g.professor_name}</td>
+                          <td>{g.writing}</td>
+                          <td>{g.presentation}</td>
+                          <td>{g.methodology}</td>
+                          <td>{g.originality}</td>
+                          <td>{g.clarity}</td>
+                          <td>{g.total}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {details.grades.map(g => (
-                          <tr key={g.professor_id}>
-                            <td>{g.professor_name}</td>
-                            <td>{g.clarity}</td>
-                            <td>{g.originality}</td>
-                            <td>{g.methodology}</td>
-                            <td>{g.writing}</td>
-                            <td>{g.presentation}</td>
-                            <td>{g.total}</td>
-                          </tr>
-                        ))}
+                      ))}
                       </tbody>
                     </table>
                   </>
