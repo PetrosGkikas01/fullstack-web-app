@@ -241,10 +241,9 @@ const publishAnnouncement = async () => {
   setPublishing(true);
   try {
     const { data } = await axios.post(
-      `${API_BASE}/api/professor/theses/${openId}/announcement`,
-      {},
-      { headers }
-    );
+  `${API_BASE}/api/professor/theses/${openId}/announcement`,
+  { text: announcementText.trim() },   
+  );
     alert("Η ανακοίνωση δημοσιεύτηκε." + (data?.id ? ` (#${data.id})` : ""));
   } catch (e) {
     alert(e?.response?.data?.error || "Αποτυχία δημοσίευσης.");

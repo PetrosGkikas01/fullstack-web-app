@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { importJSON } from "../api/Secretary";
+import { AuthContext } from "../context/AuthContext";
 import "./InsertData.css";
 
 export default function InsertData() {
   const navigate = useNavigate();
+  const { auth } = useContext(AuthContext);
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,7 +25,7 @@ export default function InsertData() {
     }
     try {
       setBusy(true);
-      const res = await importJSON(file); 
+      const res = await importJSON(auth?.token, file);
       setOk(true);
       setMsg(JSON.stringify(res, null, 2));
     } catch (e) {

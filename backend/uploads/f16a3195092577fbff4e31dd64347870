@@ -1,0 +1,21 @@
+{
+  "students": [
+    { "name": "Γιάννης Παπαδόπουλος", "email": "giannis@student.com", "password": "1234", "student_number": "2023001", "department": "CEID", "etos": 4 },
+    { "name": "Πετρος Παπαγιαννης",   "email": "petros@student.com",  "password": "1234", "student_number": "2023002", "department": "CEID", "etos": 4 },
+    { "name": "Μαρια Καλογηρου",      "email": "maria@student.com",   "password": "1234", "student_number": "2023003", "department": "CEID", "etos": 5 },
+    { "name": "Σοφια Καραγιαννη",     "email": "sofia@student.com",   "password": "1234", "student_number": "2023004", "department": "CEID", "etos": 6 },
+    { "name": "Δημητρης Παπας",       "email": "dimitris@student.com","password": "1234", "student_number": "2023005", "department": "CEID", "etos": 4 },
+    { "name": "Γιάννης Παπαδόπουλος", "email": "giannis2@student.com","password": "1234", "student_number": "2023006", "department": "CEID", "etos": 5 },
+    { "name": "Ιωαννα Αλεξανδρου",    "email": "ioanna@student.com",  "password": "1234", "student_number": "2023007", "department": "CEID", "etos": 6 },
+    { "name": "Αλεξανδρος Μακρηγιαννης","email":"alexandros@student.com","password":"1234","student_number":"2023008","department":"CEID","etos":5 },
+    { "name": "Αναστασης Μακρης",     "email": "anastasis@student.com","password":"1234","student_number":"2023009","department":"CEID","etos":6 },
+    { "name": "Αννα Καναρη",          "email": "anna@student.com",    "password": "1234", "student_number": "2023010", "department": "CEID", "etos": 7 }
+  ],
+  "professors": [
+    { "name": "Νίκος Καραγιάννης",    "email": "nikos@professor.com",     "password": "1234", "specialty": "Τεχνητη Νοημοσυνη",            "is_admin": 0 },
+    { "name": "Γιωργος Λαμπρου",      "email": "giorgos@professor.com",   "password": "1234", "specialty": "Λογικη Σχεδιαση",              "is_admin": 0 },
+    { "name": "Παναγιωτης Ιωαννου",   "email": "panagiotis@professor.com","password": "1234", "specialty": "Αρχιτεκτονικη Υπολογιστων",   "is_admin": 0 },
+    { "name": "Δημητρα Παναγιωτου",   "email": "dimitra@professor.com",   "password": "1234", "specialty": "Βασεις Δεδομενων",             "is_admin": 0 },
+    { "name": "Βασιλης Βλασσας",      "email": "vasilis@professor.com",   "password": "1234", "specialty": "Ψηφιακες Τηλεπικοινωνιες",     "is_admin": 0 }
+  ]
+}
