@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext, useMemo, useCallback } from "re
 import axios from "axios";
 import "./ProfessorManageTheses.css";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation} from "react-router-dom";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 const API_URL_MANAGED = `${API_BASE}/api/professor/theses`;
@@ -26,6 +26,11 @@ export default function ProfessorManageTheses() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+
+  const { search } = useLocation();
+  const qs = new URLSearchParams(search);
+  const openParam = qs.get("open");    
+  const roleParam = qs.get("role");     
 
   const [openId, setOpenId] = useState(null);
   const [openItem, setOpenItem] = useState(null);
@@ -108,6 +113,24 @@ export default function ProfessorManageTheses() {
     setGrades([]);
     setGradingOpen(Boolean(item.grading_open));
   };
+
+  useEffect(() => {
+  const sp = new URLSearchParams(window.location.search);
+  const wantRole = sp.get("role");
+  const open = sp.get("open");
+
+  if (wantRole && (wantRole === "committee" || wantRole === "supervisor") && role !== wantRole) {
+    setRole(wantRole);
+    return; 
+  }
+
+  if (open && items.length) {
+    const item = items.find(t => String(t.id) === String(open));
+    if (item) {
+      openManage(item);
+    }
+  }
+}, [items, role]);
 
   const closeManage = () => {
     setOpenId(null);

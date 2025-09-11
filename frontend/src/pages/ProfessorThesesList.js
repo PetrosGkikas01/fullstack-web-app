@@ -210,7 +210,17 @@ export default function ProfessorThesesList() {
         <div className="card card--wide">
           <div className="card-header">
             <div>{selected.title}</div>
-            <button className="btn btn-light" onClick={() => setSelected(null)}>Κλείσιμο</button>
+            <div>
+              <button
+                className="btn"
+                onClick={() => navigate(`/manage-theses?open=${selected.id}&role=${selected.role === "committee" ? "committee" : "supervisor"}`)}
+              >
+                Διαχείριση
+              </button>
+              <button className="btn btn-light" onClick={() => setSelected(null)} style={{ marginLeft: 8 }}>
+                Κλείσιμο
+              </button>
+            </div>
           </div>
           <div className="card-body">
             <p className="mb-0">
@@ -355,13 +365,26 @@ export default function ProfessorThesesList() {
 }
 
 function FragmentRow({ row, onView }) {
+  const navigate = useNavigate();
+
+  const roleParam = row.role === "committee" ? "committee" : "supervisor";
+
   return (
     <>
       <div className="ptl-td" title={row.title}>{row.title}</div>
       <div className="ptl-td">{row.student_name} <small>({row.student_email})</small></div>
       <div className="ptl-td"><span className={"status-pill status-" + row.status}>{tStatus(row.status)}</span></div>
       <div className="ptl-td col-role">{tRole(row.role)}</div>
-      <div className="ptl-td"><button className="btn btn-light" onClick={onView}>Λεπτομέρειες</button></div>
+      <div className="ptl-td">
+        <button className="btn btn-light" onClick={onView}>Λεπτομέρειες</button>
+        <button
+          className="btn"
+          style={{ marginLeft: 8 }}
+          onClick={() => navigate(`/professor/manage-theses?open=${row.id}&role=${row.role}`)}
+        >
+          Διαχείριση
+        </button>
+      </div>
     </>
   );
 }
