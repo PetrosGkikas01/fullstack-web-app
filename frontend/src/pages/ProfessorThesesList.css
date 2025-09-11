@@ -1,9 +1,19 @@
-/* ===== Page layout ===== */
+/* ===== Page layout (βασικό) ===== */
 .page { max-width: 1200px; margin: 0 auto; padding: 1rem; }
 .page-title { margin: .25rem 0 .75rem; }
 .page-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #eee; }
-
 .mb-0 { margin-bottom: 0 !important; }
+
+/* === Όταν ανοίγει wide κάρτα, άπλωσε ΜΟΝΟ τότε το frame === */
+:root { --details-max-width: 1600px; } /* ρυθμίζεις εδώ πόσο φαρδύ θέλεις */
+@supports selector(.page:has(.card--wide)) {
+  .page:has(.card--wide) { max-width: var(--details-max-width) !important; }
+}
+/* Fallback για παλιούς browsers (αν το χρειαστείς, βγάλ’ το από σχόλιο)
+@supports not selector(.page:has(.card--wide)) {
+  .page { max-width: var(--details-max-width) !important; }
+}
+*/
 
 /* ===== Buttons ===== */
 .back-button,
@@ -20,8 +30,7 @@
   text-decoration: none;
   transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.btn:disabled { opacity: .7; cursor: default; }
-
+.btn:disabled { opacity: .6; cursor: not-allowed; pointer-events: none; }
 .btn-light    { background: #f8f9fa; color: #212529; border-color: #dcdcdc; }
 .btn-secondary{ background: #6c757d; border-color: #6c757d; }
 .btn-danger   { background: #dc3545; border-color: #dc3545; }
@@ -36,7 +45,6 @@
 .btn-danger:focus-visible { background: #bb2d3b; border-color: #b02a37; color: #fff; }
 .back-button:hover,
 .back-button:focus-visible { background: #0b5ed7; border-color: #0a58ca; color: #fff; }
-
 .back-button { margin-top: 6px; }
 
 /* ===== Toolbar (filters + exports) ===== */
@@ -84,12 +92,14 @@
 
 /* ===== Details card ===== */
 .card {
+  width: 100%;
   margin-top: 24px;
   background: #fff;
   border: 1px solid #eee;
   border-radius: 12px;
   padding: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  margin-bottom: 16px;
 }
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -97,18 +107,23 @@
 }
 .card-body { padding: .8rem .9rem; }
 
-/* Actions in details — απόλυτο 2×2 grid με ίδιες γραμμές */
+/* === Λίγο έξτρα «άπλωμα» μόνο στην wide κάρτα, χωρίς full-bleed === */
+.card--wide { margin-left: calc(-1rem); margin-right: calc(-1rem); }
+.card--wide .card-body { padding-left: 1.25rem; padding-right: 1.25rem; }
+/* Ο πίνακας στις λεπτομέρειες να πιάνει όλο το πλάτος */
+.card--wide .section-content { overflow-x: visible; }
+.card--wide .section-content table { width: 100%; max-width: 100%; table-layout: auto; }
+
+/* ===== Actions in details — 2×2 grid ===== */
 .thesis-actions {
   display: grid !important;
-  grid-template-columns: 1fr 1fr;  /* δύο ίσες στήλες */
-  grid-auto-rows: 56px;            /* ίσο ύψος για όλες τις γραμμές */
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 56px;
   gap: 8px;
   margin-top: 8px;
 }
-
-/* Τα κουμπιά γεμίζουν κάθε κελί & κεντράρονται */
 .thesis-actions .btn {
-  display: flex !important;        /* υπερισχύει του .btn { display:inline-block } */
+  display: flex !important;
   width: 100%;
   height: 100%;
   align-items: center;
@@ -116,14 +131,12 @@
   white-space: normal;
   margin: 0;
 }
-
-/* Ρητή διάταξη: 1η γραμμή = (Μετάβαση, Ενεργοποίηση), 2η = (Ακύρωση, Δημοσίευση) */
 .thesis-actions .btn:nth-child(1) { grid-column: 1; grid-row: 1; }
 .thesis-actions .btn:nth-child(2) { grid-column: 2; grid-row: 1; }
 .thesis-actions .btn:nth-child(3) { grid-column: 1; grid-row: 2; }
 .thesis-actions .btn:nth-child(4) { grid-column: 2; grid-row: 2; }
 
-/* ===== Sections inside details ===== */
+/* ===== Sections μέσα στην κάρτα ===== */
 .section { margin-top: 1rem; }
 .section h4 { margin: .25rem 0 .5rem; font-weight: 600; color: #111827; }
 .section-content {
@@ -131,26 +144,49 @@
   background: #fafafa;
   border-radius: 8px;
   padding: .6rem .7rem;
+  overflow-x: visible; /* χωρίς οριζόντιο scroll όταν υπάρχει χώρος */
 }
+.section-content table { width: 100%; max-width: 100%; }
 
-/* Announcement box (inside a section) */
-.announcement-box {
-  margin-top: .25rem;
-  border: 1px dashed #c9d7ff;
-  background: #eef3ff;
-  color: #0b3d91;
-  padding: .6rem .7rem;
+/* ===== Grade form (όψη ίδια με Διαχείριση) ===== */
+.grade-form { display: flex; flex-direction: column; gap: 8px; }
+.grade-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.grade-field label {
+  display: block;
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+.grade-field input {
+  width: 100%;
+  padding: .45rem .55rem;
+  border: 1px solid #dcdcdc;
   border-radius: 8px;
-  white-space: pre-wrap;
+  background: #fff;
+  outline: none;
 }
+.grade-field input:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 3px rgba(13,110,253,.12);
+}
+.grade-actions { display: flex; gap: 8px; align-items: center; }
+.grade-total { margin-left: auto; font-weight: 600; color: #111827; }
+.grade-hint { color: #6b7280; font-size: 13px; }
 
-/* ===== Links inside card ===== */
+/* ===== Links μέσα στην κάρτα ===== */
 .card-body a { color: #0d6efd; text-decoration: none; }
 .card-body a:hover { text-decoration: underline; }
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
   .ptl-grid { grid-template-columns: 1.8fr 1.2fr 1fr .9fr 100px; }
+}
+@media (max-width: 780px) {
+  .grade-row { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 720px) {
   .export-actions { width: 100%; justify-content: flex-end; }
@@ -161,4 +197,32 @@
   .col-role { display: none; }
   .thesis-actions { grid-template-columns: 1fr; grid-auto-rows: 48px; }
   .thesis-actions .btn:nth-child(n) { grid-column: auto; grid-row: auto; }
+  .grade-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* === ΜΟΝΟ η κάρτα λεπτομερειών να γίνεται φαρδύτερη όταν είναι ανοικτή === */
+
+/* Ρύθμισε εδώ πόσο έξτρα πλάτος θες (δεξιά) πάνω από το 100% του container */
+:root {
+  --card-extra-width: 25px; /* π.χ. 240px, 400px, κ.λπ. */
+}
+
+/* Η wide κάρτα απλώνεται προς τα δεξιά, χωρίς να αλλάζει η σελίδα */
+.card.card--wide {
+  max-width: none;                               /* μην περιορίζεται από το parent */
+  width: min(calc(100% + var(--card-extra-width)), 96vw);
+  /* κρατάμε την αριστερή στοίχιση όπως είναι, και επεκτεινόμαστε δεξιά */
+}
+
+/* Ο πίνακας μέσα στην κάρτα να χρησιμοποιεί όλο το νέο πλάτος, χωρίς εσωτερικό scroll */
+.card.card--wide .section-content { overflow-x: visible; }
+.card.card--wide .section-content table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: auto;
+}
+
+/* Προστασία για πιο μικρές οθόνες: όταν δεν υπάρχει χώρος, μην προσπαθεί να απλωθεί */
+@media (max-width: 1280px) {
+  .card.card--wide { width: 100%; }
 }

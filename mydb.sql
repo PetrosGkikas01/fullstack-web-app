@@ -289,3 +289,21 @@ ALTER TABLE diplomatikhergasia
   CONSTRAINT fk_tsh_thesis FOREIGN KEY (diplomatikhergasia_id) REFERENCES diplomatikhergasia(id),
   CONSTRAINT fk_tsh_prof   FOREIGN KEY (actor_professor_id)    REFERENCES professor(id)
 );
+
+CREATE TABLE IF NOT EXISTS thesis_grade (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  diplomatikhergasia_id INT NOT NULL,
+  professor_id INT NOT NULL,
+  clarity TINYINT NOT NULL,
+  originality TINYINT NOT NULL,
+  methodology TINYINT NOT NULL,
+  writing TINYINT NOT NULL,
+  presentation TINYINT NOT NULL,
+  total TINYINT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL,
+  UNIQUE KEY uq_thesis_prof (diplomatikhergasia_id, professor_id),
+  CONSTRAINT fk_tg_thesis FOREIGN KEY (diplomatikhergasia_id) REFERENCES diplomatikhergasia(id),
+  CONSTRAINT fk_tg_prof   FOREIGN KEY (professor_id)          REFERENCES professor(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
