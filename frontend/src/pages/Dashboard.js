@@ -45,6 +45,9 @@ const Dashboard = () => {
                 <li onClick={() => {navigate("/new-assignment"); setMenuOpen(false);}}>
                   Ανάθεση Θέματος σε Φοιτητή
                 </li>
+                <li onClick={() => {navigate("/professor/theses-list"); setMenuOpen(false);}}>
+                  Προβολή Λίστας Διπλωματκών
+                </li>
                 <li onClick={() => {navigate("/committee-invitations"); setMenuOpen(false);}}>
                   Προσκλήσεις σε Τριμελή Επιτροπή
                 </li>

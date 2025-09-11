@@ -261,3 +261,31 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+ALTER TABLE diplomatikhergasia
+  ADD COLUMN IF NOT EXISTS assigned_at DATETIME NULL,
+  ADD COLUMN IF NOT EXISTS grading_open TINYINT(1) DEFAULT 0;
+
+  ALTER TABLE diplomatikhergasia
+  MODIFY status ENUM(
+    'available',
+    'under_assignment',
+    'active',
+    'under_review',
+    'completed',
+    'cancelled'
+  ) NOT NULL DEFAULT 'available';
+
+  CREATE TABLE IF NOT EXISTS thesis_status_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  diplomatikhergasia_id INT NOT NULL,
+  from_status ENUM('available','under_assignment','active','under_review','completed','cancelled') NULL,
+  to_status   ENUM('available','under_assignment','active','under_review','completed','cancelled') NOT NULL,
+  actor_role  ENUM('professor','secretary','committee_member','system') NOT NULL DEFAULT 'professor',
+  actor_professor_id INT NULL,
+  note VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_thesis (diplomatikhergasia_id, created_at),
+  CONSTRAINT fk_tsh_thesis FOREIGN KEY (diplomatikhergasia_id) REFERENCES diplomatikhergasia(id),
+  CONSTRAINT fk_tsh_prof   FOREIGN KEY (actor_professor_id)    REFERENCES professor(id)
+);

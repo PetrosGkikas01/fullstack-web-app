@@ -2,18 +2,47 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+/* -----------------------------------------------------------------------------
+ * Helpers
+ * ---------------------------------------------------------------------------*/
+
+// Επιτρέπει πρόσβαση αν ο καθηγητής είναι επιβλέπων ή accepted μέλος τριμελούς
+async function profHasAccessToThesis(thesisId, professorId) {
+  const [[row]] = await db.query(
+    `SELECT d.id
+       FROM diplomatikhergasia d
+       LEFT JOIN committee_invitation ci
+         ON ci.diplomatikhergasia_id = d.id
+        AND ci.professor_id = ?
+        AND ci.status = 'accepted'
+      WHERE d.id = ?
+        AND (d.professor_id = ? OR ci.id IS NOT NULL)
+      LIMIT 1`,
+    [professorId, thesisId, professorId]
+  );
+  return !!row;
+}
+
+// Καταγραφή αλλαγής κατάστασης (δέχεται είτε transaction conn είτε db)
+async function logStatusChange(runner, thesisId, fromStatus, toStatus, actorProfessorId = null, actorRole = "professor", note = null) {
+  const exec = runner && runner.query ? runner : db;
+  const sql = `INSERT INTO thesis_status_history
+              (diplomatikhergasia_id, from_status, to_status, actor_role, actor_professor_id, note)
+              VALUES (?,?,?,?,?,?)`;
+  await exec.query(sql, [thesisId, fromStatus, toStatus, actorRole, actorProfessorId, note]);
+}
+
 /* =========================
  * Auth
  * ======================= */
 
 exports.register = async (req, res) => {
   const { name, email, password, specialty, is_admin } = req.body;
-
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 10);
     await db.query(
-      "INSERT INTO Professor (name, email, password, specialty, is_admin) VALUES (?, ?, ?, ?, ?)",
-      [name, email, hashedPassword, specialty || "", is_admin || false]
+      "INSERT INTO Professor (name, email, password, specialty, is_admin) VALUES (?,?,?,?,?)",
+      [name, email, hashed, specialty || "", is_admin ? 1 : 0]
     );
     res.status(201).json({ message: "Professor registered successfully!" });
   } catch (err) {
@@ -25,21 +54,17 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const [results] = await db.query("SELECT * FROM Professor WHERE email = ?", [email]);
+    const [rows] = await db.query("SELECT * FROM Professor WHERE email = ?", [email]);
+    if (!rows.length) return res.status(401).json({ error: "Invalid credentials" });
 
-    if (results.length === 0)
-      return res.status(401).json({ error: "Invalid credentials" });
-
-    const match = await bcrypt.compare(password, results[0].password);
-    if (!match)
-      return res.status(401).json({ error: "Invalid credentials" });
+    const ok = await bcrypt.compare(password, rows[0].password);
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: results[0].id, role: "professor" },
+      { id: rows[0].id, role: "professor" },
       process.env.JWT_SECRET,
       { expiresIn: "2h" }
     );
-
     res.json({ token });
   } catch (err) {
     console.error("Professor login error:", err);
@@ -48,115 +73,94 @@ exports.login = async (req, res) => {
 };
 
 /* =========================
- * Topics (δημιουργία/λήψη/ενημέρωση/διαγραφή)
+ * Topics (CRUD)
  * ======================= */
 
 exports.createTopic = async (req, res) => {
   const { title, description } = req.body;
-  const professor_id = req.user?.id;
+  const professor_id = req.user.id;
   const pdf_file = req.file ? req.file.filename : null;
 
-  console.log("📥 Received topic:", { title, description, professor_id, pdf_file });
-
-  const sql = `
-    INSERT INTO diplomatikhergasia 
-    (title, description, professor_id, status, pdf_file)
-    VALUES (?, ?, ?, 'available', ?)`;
-
   try {
-    const [result] = await db.query(sql, [title, description, professor_id, pdf_file]);
-    console.log("✅ DB insert complete:", result);
+    await db.query(
+      `INSERT INTO diplomatikhergasia (title, description, professor_id, status, pdf_file)
+       VALUES (?, ?, ?, 'available', ?)`,
+      [title, description, professor_id, pdf_file]
+    );
     res.status(201).json({ message: "Το θέμα δημιουργήθηκε επιτυχώς." });
   } catch (err) {
-    console.error("❌ DB error (createTopic):", err);
+    console.error("createTopic error:", err);
     res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
 exports.getMyTopics = async (req, res) => {
-  console.log("Decoded user from token:", req.user);
   const professor_id = req.user.id;
-
-  const sql =
-    "SELECT id, title, description, status, pdf_file FROM diplomatikhergasia WHERE professor_id = ? ORDER BY id DESC";
-
   try {
-    const [rows] = await db.query(sql, [professor_id]);
-    console.log("📄 Topics found:", rows);
+    const [rows] = await db.query(
+      "SELECT id, title, description, status, pdf_file FROM diplomatikhergasia WHERE professor_id = ? ORDER BY id DESC",
+      [professor_id]
+    );
     res.json(rows);
   } catch (err) {
-    console.error("❌ DB error (getMyTopics):", err);
+    console.error("getMyTopics error:", err);
     res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση των θεμάτων." });
   }
 };
 
-exports.deleteTopic = async (req, res) => {
-  const topicId = req.params.id;
-  const professorId = req.user?.id;
-
-  try {
-    const [result] = await db.query(
-      "DELETE FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
-      [topicId, professorId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν ανήκει σε εσάς." });
-    }
-
-    res.json({ message: "Το θέμα διαγράφηκε επιτυχώς." });
-  } catch (err) {
-    console.error("❌ Σφάλμα διαγραφής (deleteTopic):", err);
-    res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή." });
-  }
-};
-
 exports.getTopicById = async (req, res) => {
-  const id = req.params.id;
-  const professor_id = req.user?.id;
-
+  const professor_id = req.user.id;
+  const id = Number(req.params.id);
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
+    const [[row]] = await db.query(
+      "SELECT id, title, description, status, pdf_file FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
       [id, professor_id]
     );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε" });
-    }
-
-    res.json(rows[0]);
+    if (!row) return res.status(404).json({ error: "Το θέμα δεν βρέθηκε." });
+    res.json(row);
   } catch (err) {
-    console.error("❌ Σφάλμα ανάκτησης θέματος (getTopicById):", err);
-    res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση" });
+    console.error("getTopicById error:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
 exports.updateTopic = async (req, res) => {
-  const id = req.params.id;
-  const professor_id = req.user?.id;
-  const { title, description } = req.body;
+  const professor_id = req.user.id;
+  const id = Number(req.params.id);
+  const { title, description, status } = req.body;
   const pdf_file = req.file ? req.file.filename : null;
 
   try {
-    const sql = pdf_file
-      ? "UPDATE diplomatikhergasia SET title = ?, description = ?, pdf_file = ? WHERE id = ? AND professor_id = ?"
-      : "UPDATE diplomatikhergasia SET title = ?, description = ? WHERE id = ? AND professor_id = ?";
-
-    const params = pdf_file
-      ? [title, description, pdf_file, id, professor_id]
-      : [title, description, id, professor_id];
-
-    const [result] = await db.query(sql, params);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν σας ανήκει." });
-    }
-
+    const [result] = await db.query(
+      `UPDATE diplomatikhergasia
+          SET title = COALESCE(?, title),
+              description = COALESCE(?, description),
+              status = COALESCE(?, status),
+              pdf_file = COALESCE(?, pdf_file)
+        WHERE id = ? AND professor_id = ?`,
+      [title ?? null, description ?? null, status ?? null, pdf_file ?? null, id, professor_id]
+    );
+    if (!result.affectedRows) return res.status(404).json({ error: "Το θέμα δεν βρέθηκε." });
     res.json({ message: "Το θέμα ενημερώθηκε επιτυχώς." });
   } catch (err) {
-    console.error("❌ Σφάλμα ενημέρωσης (updateTopic):", err);
+    console.error("updateTopic error:", err);
     res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση." });
+  }
+};
+
+exports.deleteTopic = async (req, res) => {
+  const professor_id = req.user.id;
+  const id = Number(req.params.id);
+  try {
+    const [result] = await db.query(
+      "DELETE FROM diplomatikhergasia WHERE id = ? AND professor_id = ?",
+      [id, professor_id]
+    );
+    if (!result.affectedRows) return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν ανήκει σε εσάς." });
+    res.json({ message: "Το θέμα διαγράφηκε επιτυχώς." });
+  } catch (err) {
+    console.error("deleteTopic error:", err);
+    res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή." });
   }
 };
 
@@ -167,47 +171,33 @@ exports.updateTopic = async (req, res) => {
 exports.assignTopicToStudent = async (req, res) => {
   const professor_id = req.user.id;
   let { topic_id, student_id } = req.body;
-
   topic_id = Number(topic_id);
   student_id = Number(student_id);
   if (!Number.isInteger(topic_id) || !Number.isInteger(student_id)) {
-    return res.status(400).json({ error: "Μη έγκυρες παράμετροι (ids πρέπει να είναι ακέραιοι)." });
+    return res.status(400).json({ error: "Μη έγκυρες παράμετροι." });
   }
 
   try {
-    const [stu] = await db.query(
-      "SELECT id FROM student WHERE id = ? LIMIT 1",
-      [student_id]
-    );
-    if (!stu.length) {
-      return res.status(400).json({ error: "Ο φοιτητής δεν βρέθηκε." });
-    }
+    const [stu] = await db.query("SELECT id FROM student WHERE id = ? LIMIT 1", [student_id]);
+    if (!stu.length) return res.status(400).json({ error: "Ο/Η φοιτητής/τρια δεν βρέθηκε." });
 
     const [topics] = await db.query(
       "SELECT id FROM diplomatikhergasia WHERE id = ? AND professor_id = ? AND status = 'available' LIMIT 1",
       [topic_id, professor_id]
     );
-    if (!topics.length) {
-      return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο." });
-    }
+    if (!topics.length) return res.status(404).json({ error: "Το θέμα δεν βρέθηκε ή δεν είναι διαθέσιμο." });
 
     await db.query(
       "UPDATE diplomatikhergasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
       [student_id, topic_id]
     );
+    // timeline
+    await logStatusChange(db, topic_id, "available", "under_assignment", professor_id, "professor", `Assign to student ${student_id}`);
 
-    return res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
+    res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
   } catch (err) {
-    console.error("Σφάλμα ανάθεσης (assignTopicToStudent):", err);
-
-    if (err?.code === "ER_NO_REFERENCED_ROW_2" || err?.code === "ER_ROW_IS_REFERENCED_2") {
-      return res.status(400).json({ error: "Αποτυχία ελέγχου ακεραιότητας (FK). Έλεγξε το student_id." });
-    }
-    if (err?.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD") {
-      return res.status(400).json({ error: "Λάθος τύπος δεδομένου (π.χ. μη αριθμός σε INT)." });
-    }
-
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    console.error("assignTopicToStudent error:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -215,10 +205,44 @@ exports.assignTopicToStudent = async (req, res) => {
  * Προσκλήσεις τριμελούς (ως μέλος)
  * ======================= */
 
+exports.listMyCommitteeInvitations = async (req, res) => {
+  try {
+    const professorId = req.user.id;
+    const { status } = req.query;
+    const params = [professorId];
+    let where = "ci.professor_id = ?";
+    if (status) { where += " AND ci.status = ?"; params.push(status); }
+
+    const [rows] = await db.query(
+      `SELECT 
+         ci.id           AS id,
+         ci.status       AS status,
+         ci.invited_at   AS invited_at,
+         ci.responded_at AS responded_at,
+         d.id            AS thesis_id,
+         d.title         AS thesis_title,
+         d.status        AS thesis_status,
+         s.id            AS student_id,
+         s.name          AS student_name,
+         s.email         AS student_email
+       FROM committee_invitation ci
+       JOIN diplomatikhergasia d ON d.id = ci.diplomatikhergasia_id
+       JOIN student s ON s.id = d.student_id
+       WHERE ${where}
+       ORDER BY ci.invited_at DESC`,
+      params
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("listMyCommitteeInvitations error", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+  }
+};
+
 exports.respondToCommitteeInvitation = async (req, res) => {
   const professorId = req.user.id;
   const { invitation_id, action } = req.body;
-
   if (!invitation_id || !["accept", "reject"].includes(action)) {
     return res.status(400).json({ error: "Λάθος παράμετροι" });
   }
@@ -235,13 +259,9 @@ exports.respondToCommitteeInvitation = async (req, res) => {
         FOR UPDATE`,
       [invitation_id, professorId]
     );
+    if (!rows.length) { await conn.rollback(); return res.status(404).json({ error: "Δεν βρέθηκε πρόσκληση." }); }
 
-    if (!rows.length) {
-      await conn.rollback();
-      return res.status(404).json({ error: "Δεν βρέθηκε πρόσκληση." });
-    }
     const inv = rows[0];
-
     if (inv.status !== "pending") {
       await conn.rollback();
       return res.status(409).json({ error: "Η πρόσκληση δεν είναι πλέον εκκρεμής." });
@@ -249,107 +269,55 @@ exports.respondToCommitteeInvitation = async (req, res) => {
 
     const newStatus = action === "accept" ? "accepted" : "rejected";
     await conn.query(
-      `UPDATE committee_invitation
-          SET status = ?, responded_at = NOW()
-        WHERE id = ?`,
+      `UPDATE committee_invitation SET status=?, responded_at=NOW() WHERE id=?`,
       [newStatus, invitation_id]
     );
 
     if (newStatus === "accepted") {
       const thesisId = inv.diplomatikhergasia_id;
-
-      await conn.query(
-        `SELECT id FROM diplomatikhergasia WHERE id = ? FOR UPDATE`,
-        [thesisId]
-      );
+      await conn.query(`SELECT id FROM diplomatikhergasia WHERE id=? FOR UPDATE`, [thesisId]);
 
       const [acc] = await conn.query(
-        `SELECT COUNT(*) AS c
-           FROM committee_invitation
-          WHERE diplomatikhergasia_id = ? AND status = 'accepted'`,
+        `SELECT COUNT(*) AS c FROM committee_invitation WHERE diplomatikhergasia_id=? AND status='accepted'`,
         [thesisId]
       );
-      const acceptedCount = acc[0]?.c || 0;
+      if ((acc[0]?.c || 0) >= 2) {
+        // πριν αλλάξεις, (προαιρετικά) διάβασε το προηγούμενο status
+        const [[prev]] = await conn.query(`SELECT status FROM diplomatikhergasia WHERE id=?`, [thesisId]);
+        await conn.query(`UPDATE diplomatikhergasia SET status='active' WHERE id=?`, [thesisId]);
+        // timeline
+        await logStatusChange(conn, thesisId, (prev && prev.status) || "under_assignment", "active", null, "system", "Accepted committee (2/2)");
 
-      if (acceptedCount >= 2) {
-        await conn.query(
-          `UPDATE diplomatikhergasia
-              SET status = 'active'
-            WHERE id = ?`,
-          [thesisId]
-        );
+        // ακύρωσε pending υπόλοιπες
         try {
           await conn.query(
             `UPDATE committee_invitation
-                SET status = 'cancelled',
+                SET status='cancelled',
                     responded_at = COALESCE(responded_at, NOW())
-              WHERE diplomatikhergasia_id = ? AND status = 'pending'`,
+              WHERE diplomatikhergasia_id=? AND status='pending'`,
             [thesisId]
           );
         } catch (e) {
-          if (e && e.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD") {
-            await conn.query(
-              `UPDATE committee_invitation
-                  SET status = 'canceled',
-                      responded_at = COALESCE(responded_at, NOW())
-                WHERE diplomatikhergasia_id = ? AND status = 'pending'`,
-              [thesisId]
-            );
-          } else {
-            throw e;
-          }
+          // διαφοροποίηση 'canceled'/'cancelled' αν χρειαστεί
+          await conn.query(
+            `UPDATE committee_invitation
+                SET status='canceled',
+                    responded_at = COALESCE(responded_at, NOW())
+              WHERE diplomatikhergasia_id=? AND status='pending'`,
+            [thesisId]
+          );
         }
       }
     }
 
     await conn.commit();
-    return res.json({ message: "Η απάντησή σας καταχωρήθηκε." });
+    res.json({ message: "Η απάντησή σας καταχωρήθηκε." });
   } catch (err) {
-    if (conn) {
-      try { await conn.rollback(); } catch (_) {}
-    }
+    if (conn) { try { await conn.rollback(); } catch(_){} }
     console.error("respondToCommitteeInvitation error", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   } finally {
     if (conn) conn.release();
-  }
-};
-
-exports.listMyCommitteeInvitations = async (req, res) => {
-  try {
-    const professorId = req.user.id;
-    const { status } = req.query;
-    const params = [professorId];
-    let where = "ci.professor_id = ?";
-    if (status) {
-      where += " AND ci.status = ?";
-      params.push(status);
-    }
-
-    const [rows] = await db.query(
-      `SELECT 
-         ci.id               AS id,
-         ci.status           AS status,
-         ci.invited_at       AS invited_at,
-         ci.responded_at     AS responded_at,
-         d.id                AS thesis_id,
-         d.title             AS thesis_title,
-         d.status            AS thesis_status,
-         s.id                AS student_id,
-         s.name              AS student_name,
-         s.email             AS student_email
-       FROM committee_invitation ci
-       JOIN diplomatikhergasia d ON d.id = ci.diplomatikhergasia_id
-       JOIN student s ON s.id = d.student_id
-       WHERE ${where}
-       ORDER BY ci.invited_at DESC`,
-      params
-    );
-
-    return res.json(rows);
-  } catch (err) {
-    console.error("listMyCommitteeInvitations error", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -359,50 +327,71 @@ exports.listMyCommitteeInvitations = async (req, res) => {
 
 exports.listManagedTheses = async (req, res) => {
   const professorId = req.user.id;
-  const role = String(req.query.role || "supervisor").toLowerCase();
+  const role = String(req.query.role || "supervisor").toLowerCase(); // supervisor | committee | both
   const statusCsv = String(req.query.status || "").trim();
   const statuses = statusCsv ? statusCsv.split(",").map(s => s.trim()).filter(Boolean) : [];
 
   try {
-    let sql, params;
     let whereStatus = "";
-    if (statuses.length) {
-      whereStatus = ` AND d.status IN (${statuses.map(() => "?").join(",")})`;
-    }
+    if (statuses.length) whereStatus = ` AND d.status IN (${statuses.map(() => "?").join(",")})`;
 
     if (role === "committee") {
-      sql = `
-        SELECT 
-          d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
-          s.id AS student_id, s.name AS student_name, s.email AS student_email
-        FROM diplomatikhergasia d
-        JOIN student s ON s.id = d.student_id
-        JOIN committee_invitation ci
-             ON ci.diplomatikhergasia_id = d.id
-            AND ci.professor_id = ?
-            AND ci.status = 'accepted'
-        WHERE 1=1 ${whereStatus}
-        ORDER BY d.assigned_at DESC, d.id DESC
-      `;
-      params = [professorId, ...statuses];
-    } else {
-      sql = `
-        SELECT 
-          d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
-          s.id AS student_id, s.name AS student_name, s.email AS student_email
-        FROM diplomatikhergasia d
-        JOIN student s ON s.id = d.student_id
-        WHERE d.professor_id = ? ${whereStatus}
-        ORDER BY d.assigned_at DESC, d.id DESC
-      `;
-      params = [professorId, ...statuses];
+      const [rows] = await db.query(
+        `SELECT d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
+               s.id AS student_id, s.name AS student_name, s.email AS student_email
+          FROM diplomatikhergasia d
+          JOIN student s ON s.id = d.student_id
+          JOIN committee_invitation ci
+            ON ci.diplomatikhergasia_id = d.id
+           AND ci.professor_id = ?
+           AND ci.status = 'accepted'
+         WHERE 1=1 ${whereStatus}
+         ORDER BY d.assigned_at DESC, d.id DESC`,
+        [professorId, ...statuses]
+      );
+      return res.json(rows);
     }
 
-    const [rows] = await db.query(sql, params);
-    return res.json(rows);
+    if (role === "supervisor") {
+      const [rows] = await db.query(
+        `SELECT d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
+               s.id AS student_id, s.name AS student_name, s.email AS student_email
+          FROM diplomatikhergasia d
+          JOIN student s ON s.id = d.student_id
+         WHERE d.professor_id = ? ${whereStatus}
+         ORDER BY d.assigned_at DESC, d.id DESC`,
+        [professorId, ...statuses]
+      );
+      return res.json(rows);
+    }
+
+    // both
+    const [rowsS] = await db.query(
+      `SELECT d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
+              s.id AS student_id, s.name AS student_name, s.email AS student_email, 'supervisor' AS role
+         FROM diplomatikhergasia d
+         JOIN student s ON s.id = d.student_id
+        WHERE d.professor_id = ? ${whereStatus}
+        ORDER BY d.assigned_at DESC, d.id DESC`,
+      [professorId, ...statuses]
+    );
+    const [rowsC] = await db.query(
+      `SELECT d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
+              s.id AS student_id, s.name AS student_name, s.email AS student_email, 'committee' AS role
+         FROM diplomatikhergasia d
+         JOIN student s ON s.id = d.student_id
+         JOIN committee_invitation ci
+           ON ci.diplomatikhergasia_id = d.id
+          AND ci.professor_id = ?
+          AND ci.status = 'accepted'
+        WHERE 1=1 ${whereStatus}
+        ORDER BY d.assigned_at DESC, d.id DESC`,
+      [professorId, ...statuses]
+    );
+    return res.json([...rowsS, ...rowsC].sort((a, b) => new Date(b.assigned_at) - new Date(a.assigned_at)));
   } catch (err) {
     console.error("listManagedTheses error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -412,31 +401,22 @@ exports.getThesisInvitations = async (req, res) => {
     const thesisId = Number(req.params.id);
     if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
 
-    const [[own]] = await db.query(
-      `SELECT id FROM diplomatikhergasia WHERE id=? AND professor_id=?`,
-      [thesisId, professorId]
-    );
-    if (!own) return res.status(403).json({ error: "Επιτρέπεται μόνο στον επιβλέποντα." });
+    const ok = await profHasAccessToThesis(thesisId, professorId);
+    if (!ok) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
     const [rows] = await db.query(
-      `SELECT
-         ci.id,
-         ci.status,
-         ci.invited_at,
-         ci.responded_at,
-         p.id   AS professor_id,
-         p.name AS professor_name,
-         p.email AS professor_email
-       FROM committee_invitation ci
-       JOIN professor p ON p.id = ci.professor_id
-       WHERE ci.diplomatikhergasia_id = ?
-       ORDER BY ci.invited_at ASC`,
+      `SELECT ci.id, ci.status, ci.invited_at, ci.responded_at,
+              p.id AS professor_id, p.name AS professor_name, p.email AS professor_email
+         FROM committee_invitation ci
+         JOIN professor p ON p.id = ci.professor_id
+        WHERE ci.diplomatikhergasia_id = ?
+        ORDER BY ci.invited_at ASC, ci.id ASC`,
       [thesisId]
     );
-    return res.json(rows);
+    res.json(rows);
   } catch (err) {
     console.error("getThesisInvitations error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -453,12 +433,14 @@ exports.cancelAssignment = async (req, res) => {
     const [[th]] = await conn.query(
       `SELECT id, professor_id, student_id, status, assigned_at
          FROM diplomatikhergasia
-        WHERE id=? FOR UPDATE`,
+        WHERE id = ? FOR UPDATE`,
       [thesisId]
     );
     if (!th) { await conn.rollback(); return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε." }); }
-    if (th.professor_id !== professorId) { await conn.rollback(); return res.status(403).json({ error: "Μόνο ο επιβλέπων μπορεί να ακυρώσει." }); }
-    if (!th.student_id) { await conn.rollback(); return res.status(400).json({ error: "Δεν υπάρχει ανατεθειμένος φοιτητής." }); }
+    if (th.professor_id !== professorId) {
+      await conn.rollback();
+      return res.status(403).json({ error: "Επιτρέπεται μόνο στον επιβλέποντα." });
+    }
 
     if (th.status === "under_assignment") {
       await conn.query(`DELETE FROM committee_invitation WHERE diplomatikhergasia_id=?`, [thesisId]);
@@ -468,17 +450,17 @@ exports.cancelAssignment = async (req, res) => {
           WHERE id=?`,
         [thesisId]
       );
+      await logStatusChange(conn, thesisId, "under_assignment", "available", professorId, "professor", "Cancel assignment");
       await conn.commit();
-      return res.json({ message: "Η ανάθεση ακυρώθηκε (Υπό Ανάθεση)." });
+      return res.json({ message: "Η ανάθεση ακυρώθηκε (Υπό ανάθεση)." });
     }
 
     if (th.status === "active") {
       const { gs_number, gs_year } = req.body || {};
       if (!gs_number || !gs_year) {
         await conn.rollback();
-        return res.status(400).json({ error: "Απαιτούνται αριθμός & έτος Γ.Σ. για ακύρωση ενεργής ΔΕ." });
+        return res.status(400).json({ error: "Απαιτείται GS αριθμός & έτος για ακύρωση ενεργής ΔΕ." });
       }
-
       const [[ok]] = await conn.query(
         `SELECT TIMESTAMPDIFF(YEAR, assigned_at, NOW()) >= 2 AS can_cancel
            FROM diplomatikhergasia WHERE id=?`,
@@ -502,22 +484,25 @@ exports.cancelAssignment = async (req, res) => {
          VALUES (?, ?, 'from_professor', ?, ?)`,
         [thesisId, professorId, gs_number, gs_year]
       );
-
+      await logStatusChange(conn, thesisId, "active", "available", professorId, "professor", "Cancel active after GS");
       await conn.commit();
       return res.json({ message: "Η ανάθεση ακυρώθηκε (Ενεργή) και καταχωρήθηκε στη Γ.Σ." });
     }
 
     await conn.rollback();
-    return res.status(400).json({ error: "Η ακύρωση επιτρέπεται μόνο σε 'under_assignment' ή 'active'." });
+    res.status(400).json({ error: "Η ακύρωση επιτρέπεται μόνο σε 'under_assignment' ή 'active'." });
   } catch (err) {
-    if (conn) { try { await conn.rollback(); } catch (_) {} }
+    if (conn) { try { await conn.rollback(); } catch(_){} }
     console.error("cancelAssignment error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   } finally {
     if (conn) conn.release();
   }
 };
 
+/* =========================
+ * Σημειώσεις καθηγητή
+ * ======================= */
 
 exports.addNote = async (req, res) => {
   try {
@@ -527,26 +512,17 @@ exports.addNote = async (req, res) => {
     if (!note) return res.status(400).json({ error: "Κενό κείμενο." });
     if (note.length > 300) return res.status(400).json({ error: "Μέγιστο 300 χαρακτήρες." });
 
-    const [[authz]] = await db.query(
-      `SELECT 1 AS ok
-         FROM diplomatikhergasia d
-         LEFT JOIN committee_invitation ci
-           ON ci.diplomatikhergasia_id=d.id
-          AND ci.professor_id=? AND ci.status='accepted'
-        WHERE d.id=? AND (d.professor_id=? OR ci.id IS NOT NULL)`,
-      [professorId, thesisId, professorId]
-    );
-    if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
+    const ok = await profHasAccessToThesis(thesisId, professorId);
+    if (!ok) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
     await db.query(
-      `INSERT INTO thesis_note (diplomatikhergasia_id, professor_id, note_text)
-       VALUES (?,?,?)`,
+      `INSERT INTO thesis_note (diplomatikhergasia_id, professor_id, note_text) VALUES (?,?,?)`,
       [thesisId, professorId, note]
     );
-    return res.status(201).json({ message: "Η σημείωση αποθηκεύτηκε." });
+    res.status(201).json({ message: "Η σημείωση αποθηκεύτηκε." });
   } catch (err) {
     console.error("addNote error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -561,32 +537,38 @@ exports.listMyNotes = async (req, res) => {
         ORDER BY created_at DESC`,
       [thesisId, professorId]
     );
-    return res.json(rows);
+    res.json(rows);
   } catch (err) {
     console.error("listMyNotes error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
+/* =========================
+ * Καταστάσεις/βαθμολόγηση
+ * ======================= */
 
 exports.markUnderReview = async (req, res) => {
   try {
     const thesisId = Number(req.params.id);
     const professorId = req.user.id;
 
+    const [[was]] = await db.query(`SELECT status FROM diplomatikhergasia WHERE id=?`, [thesisId]);
     const [upd] = await db.query(
       `UPDATE diplomatikhergasia
           SET status='under_review'
         WHERE id=? AND professor_id=? AND status='active'`,
       [thesisId, professorId]
     );
-    if (upd.affectedRows === 0) {
+    if (!upd.affectedRows) {
       return res.status(400).json({ error: "Δεν επιτρέπεται (πρέπει να είστε επιβλέπων και status='active')." });
     }
-    return res.json({ message: "Η κατάσταση άλλαξε σε «Υπό Εξέταση»." });
+
+    await logStatusChange(db, thesisId, (was && was.status) || "active", "under_review", professorId, "professor", "Mark under review");
+    res.json({ message: "Η κατάσταση άλλαξε σε «Υπό Εξέταση»." });
   } catch (err) {
     console.error("markUnderReview error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -601,13 +583,13 @@ exports.openGrading = async (req, res) => {
         WHERE id=? AND professor_id=? AND status='under_review'`,
       [thesisId, professorId]
     );
-    if (upd.affectedRows === 0) {
+    if (!upd.affectedRows) {
       return res.status(400).json({ error: "Δεν επιτρέπεται (status='under_review' & επιβλέπων)." });
     }
-    return res.json({ message: "Η βαθμολόγηση ενεργοποιήθηκε." });
+    res.json({ message: "Η βαθμολόγηση ενεργοποιήθηκε." });
   } catch (err) {
     console.error("openGrading error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
@@ -617,17 +599,18 @@ exports.submitGrade = async (req, res) => {
     const professorId = req.user.id;
 
     const b = req.body || {};
-    const keys = ["clarity","originality","methodology","writing","presentation"];
+    const keys = ["clarity", "originality", "methodology", "writing", "presentation"];
     const vals = keys.map(k => Number(b[k]));
     if (vals.some(v => !Number.isInteger(v) || v < 0 || v > 10)) {
       return res.status(400).json({ error: "Τα κριτήρια πρέπει να είναι ακέραιοι 0–10." });
     }
-    const total = vals.reduce((a,c)=>a+c, 0);
+    const total = vals.reduce((a, c) => a + c, 0);
 
     const [[authz]] = await db.query(
       `SELECT d.grading_open,
               (d.professor_id=? OR EXISTS (
-                 SELECT 1 FROM committee_invitation
+                 SELECT 1
+                   FROM committee_invitation
                   WHERE diplomatikhergasia_id=d.id AND professor_id=? AND status='accepted'
                )) AS can_grade
          FROM diplomatikhergasia d
@@ -653,77 +636,70 @@ exports.submitGrade = async (req, res) => {
       [thesisId, professorId, ...vals, total]
     );
 
-    return res.status(201).json({ message: "Η βαθμολογία καταχωρήθηκε." });
+    res.status(201).json({ message: "Η βαθμολογία καταχωρήθηκε." });
   } catch (err) {
     console.error("submitGrade error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
 exports.listGrades = async (req, res) => {
   try {
     const thesisId = Number(req.params.id);
+    // αν θέλεις να περιορίσεις την πρόσβαση, μπορείς να καλέσεις profHasAccessToThesis εδώ
     const [rows] = await db.query(
-      `SELECT
-         tg.professor_id,
-         p.name AS professor_name,
-         tg.clarity, tg.originality, tg.methodology, tg.writing, tg.presentation, tg.total,
-         tg.created_at, tg.updated_at
-       FROM thesis_grade tg
-       JOIN professor p ON p.id = tg.professor_id
-       WHERE tg.diplomatikhergasia_id=?
-       ORDER BY p.name`,
+      `SELECT tg.professor_id, p.name AS professor_name,
+              tg.clarity, tg.originality, tg.methodology, tg.writing, tg.presentation, tg.total,
+              tg.created_at, tg.updated_at
+         FROM thesis_grade tg
+         JOIN professor p ON p.id = tg.professor_id
+        WHERE tg.diplomatikhergasia_id=?
+        ORDER BY p.name`,
       [thesisId]
     );
-    return res.json(rows);
+    res.json(rows);
   } catch (err) {
     console.error("listGrades error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
+
+/* =========================
+ * Draft & Ανακοίνωση παρουσίασης (ορατά και σε committee)
+ * ======================= */
 
 exports.getThesisLatestDraft = async (req, res) => {
   try {
     const professorId = req.user.id;
     const thesisId = Number(req.params.id);
-    if (!Number.isInteger(thesisId)) {
-      return res.status(400).json({ error: "Μη έγκυρο id" });
-    }
+    if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
 
-    const [[authz]] = await db.query(
-      `SELECT d.id
-         FROM diplomatikhergasia d
-         LEFT JOIN committee_invitation ci
-           ON ci.diplomatikhergasia_id = d.id
-          AND ci.professor_id = ?
-          AND ci.status = 'accepted'
-        WHERE d.id = ? AND (d.professor_id = ? OR ci.id IS NOT NULL)
-        LIMIT 1`,
-      [professorId, thesisId, professorId]
-    );
-    if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
+    const ok = await profHasAccessToThesis(thesisId, professorId);
+    if (!ok) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
     const [[row]] = await db.query(
       `SELECT f.id, f.file_name, f.file_path, f.uploaded_at,
               s.name AS student_name, s.email AS student_email
          FROM fileupload f
          JOIN diplomatikhergasia d ON d.id = f.DiplomatikhErgasia_id
-         JOIN student s ON s.id = d.student_id
+         JOIN student s           ON s.id = d.student_id
         WHERE f.DiplomatikhErgasia_id = ?
           AND f.uploaded_by = s.id
         ORDER BY f.uploaded_at DESC, f.id DESC
         LIMIT 1`,
       [thesisId]
     );
-
     if (!row) return res.status(404).json({ error: "Δεν βρέθηκε draft." });
-    return res.json(row);
+    res.json(row);
   } catch (err) {
     console.error("getThesisLatestDraft error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };
 
+// Επιστρέφει το κείμενο ανακοίνωσης παρουσίασης:
+// 1) από thesis_presentation (επίσημη εγγραφή), αλλιώς
+// 2) από announcement (τελευταία με τίτλο "Παρουσίαση: {τίτλος ΔΕ}%")
 exports.getPresentationAnnouncement = async (req, res) => {
   try {
     const professorId = req.user.id;
@@ -732,50 +708,53 @@ exports.getPresentationAnnouncement = async (req, res) => {
       return res.status(400).json({ error: "Μη έγκυρο id" });
     }
 
-    const [[authz]] = await db.query(
-      `SELECT d.id
-         FROM diplomatikhergasia d
-         LEFT JOIN committee_invitation ci
-           ON ci.diplomatikhergasia_id = d.id
-          AND ci.professor_id = ?
-          AND ci.status = 'accepted'
-        WHERE d.id = ? AND (d.professor_id = ? OR ci.id IS NOT NULL)
-        LIMIT 1`,
-      [professorId, thesisId, professorId]
-    );
-    if (!authz) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
+    const ok = await profHasAccessToThesis(thesisId, professorId);
+    if (!ok) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
 
-    const [[row]] = await db.query(
+    const [[tp]] = await db.query(
       `SELECT tp.mode, tp.room, tp.join_link, tp.exam_datetime,
-              d.title,
-              s.name AS student_name
+              d.title, s.name AS student_name
          FROM thesis_presentation tp
          JOIN diplomatikhergasia d ON d.id = tp.diplomatikhergasia_id
-         JOIN student s ON s.id = d.student_id
-        WHERE tp.diplomatikhergasia_id = ?`,
+         JOIN student s           ON s.id = d.student_id
+        WHERE tp.diplomatikhergasia_id = ?
+        LIMIT 1`,
       [thesisId]
     );
-    if (!row) return res.status(404).json({ error: "Δεν έχει οριστεί παρουσίαση." });
+    if (tp) {
+      const when = new Date(tp.exam_datetime).toLocaleString("el-GR");
+      const place = tp.mode === "online"
+        ? (tp.join_link ? `Σύνδεσμος: ${tp.join_link}` : "Η παρουσίαση θα γίνει διαδικτυακά.")
+        : (tp.room ? `Αίθουσα: ${tp.room}` : "Η παρουσίαση θα γίνει δια ζώσης.");
 
-    const when = new Date(row.exam_datetime).toLocaleString("el-GR");
-    const place = row.mode === "online"
-      ? (row.join_link ? `Σύνδεσμος: ${row.join_link}` : "Η παρουσίαση θα γίνει διαδικτυακά.")
-      : (row.room ? `Αίθουσα: ${row.room}` : "Η παρουσίαση θα γίνει δια ζώσης.");
+      const text = `Ανακοίνωση Παρουσίασης Διπλωματικής
 
-    const text =
-`Ανακοίνωση Παρουσίασης Διπλωματικής
-
-Τίτλος: ${row.title}
-Φοιτητής/τρια: ${row.student_name}
+Τίτλος: ${tp.title}
+Φοιτητής/τρια: ${tp.student_name}
 Ημερομηνία & Ώρα: ${when}
 ${place}
 
 Σας περιμένουμε!`;
+      return res.json({ text });
+    }
 
-    return res.json({ text });
+    // Fallback: από announcement — schema με body/created_at/created_by (χωρίς thesis_id)
+    const [[thesis]] = await db.query(`SELECT title FROM diplomatikhergasia WHERE id=? LIMIT 1`, [thesisId]);
+    if (!thesis) return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε." });
+
+    const [rows] = await db.query(
+      `SELECT body AS text
+         FROM announcement
+        WHERE title LIKE CONCAT('Παρουσίαση: ', ?, '%')
+        ORDER BY id DESC
+        LIMIT 1`,
+      [thesis.title]
+    );
+    if (!rows.length) return res.json({ text: null });
+    return res.json({ text: rows[0].text });
   } catch (err) {
     console.error("getPresentationAnnouncement error:", err);
-    return res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
+    return res.status(500).json({ error: "Σφάλμα ανάκτησης ανακοίνωσης" });
   }
 };
 
@@ -787,24 +766,19 @@ exports.publishAnnouncement = async (req, res) => {
     const text = String(body.text || "").trim();
     const customTitle = String(body.title || "").trim();
 
-    if (!Number.isInteger(thesisId)) {
-      return res.status(400).json({ error: "Μη έγκυρο id" });
-    }
-    if (!text) {
-      return res.status(400).json({ error: "Κενό κείμενο ανακοίνωσης." });
-    }
+    if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
+    if (!text) return res.status(400).json({ error: "Κενό κείμενο ανακοίνωσης." });
 
+    // μόνο ο επιβλέπων μπορεί να δημοσιεύσει
     const [[own]] = await db.query(
-      `SELECT id, title FROM diplomatikhergasia
-        WHERE id=? AND professor_id=? LIMIT 1`,
+      `SELECT id, title FROM diplomatikhergasia WHERE id=? AND professor_id=? LIMIT 1`,
       [thesisId, professorId]
     );
-    if (!own) {
-      return res.status(403).json({ error: "Μόνο ο επιβλέπων μπορεί να δημοσιεύσει ανακοίνωση." });
-    }
+    if (!own) return res.status(403).json({ error: "Μόνο ο επιβλέπων μπορεί να δημοσιεύσει ανακοίνωση." });
 
     const title = customTitle || `Παρουσίαση: ${own.title}`;
 
+    // Συμβατότητα με διαφορετικά schemas του announcement
     try {
       await db.query(
         `INSERT INTO announcement (title, text, thesis_id, published_by_professor_id)
@@ -812,7 +786,7 @@ exports.publishAnnouncement = async (req, res) => {
         [title, text, thesisId, professorId]
       );
     } catch (e) {
-      if (e && e.code === "ER_BAD_FIELD_ERROR") {
+      if (e?.code === "ER_BAD_FIELD_ERROR") {
         try {
           await db.query(
             `INSERT INTO announcement (title, content, thesis_id, published_by_professor_id)
@@ -821,19 +795,46 @@ exports.publishAnnouncement = async (req, res) => {
           );
         } catch (e2) {
           await db.query(
-            `INSERT INTO announcement (title, content)
-             VALUES (?,?)`,
-            [title, text]
+            `INSERT INTO announcement (title, body, created_by) VALUES (?,?,?)`,
+            [title, text, professorId]
           );
         }
-      } else {
-        throw e;
-      }
+      } else { throw e; }
     }
 
-    return res.status(201).json({ message: "Η ανακοίνωση δημοσιεύτηκε." });
+    res.status(201).json({ message: "Η ανακοίνωση δημοσιεύτηκε." });
   } catch (err) {
     console.error("publishAnnouncement error:", err);
-    return res.status(500).json({ error: "Σφάλμα δημοσίευσης ανακοίνωσης" });
+    res.status(500).json({ error: "Σφάλμα δημοσίευσης ανακοίνωσης" });
+  }
+};
+
+/* =========================
+ * Timeline (ιστορικό καταστάσεων)
+ * ======================= */
+
+exports.getThesisStatusHistory = async (req, res) => {
+  try {
+    const professorId = req.user.id;
+    const thesisId = Number(req.params.id);
+    if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
+
+    const ok = await profHasAccessToThesis(thesisId, professorId);
+    if (!ok) return res.status(403).json({ error: "Δεν έχετε πρόσβαση στη ΔΕ." });
+
+    const [rows] = await db.query(
+      `SELECT h.id, h.from_status, h.to_status, h.note, h.created_at,
+              h.actor_role, h.actor_professor_id,
+              p.name AS actor_name, p.email AS actor_email
+         FROM thesis_status_history h
+         LEFT JOIN professor p ON p.id = h.actor_professor_id
+        WHERE h.diplomatikhergasia_id = ?
+        ORDER BY h.created_at ASC, h.id ASC`,
+      [thesisId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("getThesisStatusHistory error:", err);
+    res.status(500).json({ error: "Σφάλμα βάσης δεδομένων" });
   }
 };

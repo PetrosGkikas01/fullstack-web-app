@@ -88,5 +88,6 @@ router.get("/theses/:id/draft", verifyToken, ensureProfessor, ProfessorControlle
 router.get("/theses/:id/announcement", verifyToken, ensureProfessor, ProfessorController.getPresentationAnnouncement);
 
 router.post("/theses/:id/announcement", verifyToken, ensureProfessor, ProfessorController.publishAnnouncement);
+router.get("/theses/:id/history", verifyToken, ensureProfessor, ProfessorController.getThesisStatusHistory);
 
 module.exports = router;

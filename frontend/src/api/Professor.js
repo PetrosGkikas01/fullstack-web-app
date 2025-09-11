@@ -60,11 +60,71 @@ export const assignTopicToStudent = async (topic_id, student_id) => {
   return res.data;
 };
 
-export const fetchManagedTheses = async ({ role = "supervisor", status = "under_assignment,active" } = {}) => {
+export const fetchManagedTheses = async ({ role = "supervisor", status } = {}) => {
   const token = localStorage.getItem("token");
-  const params = new URLSearchParams({ role, status });
+  const params = new URLSearchParams({ role });
+  if (status && status.trim()) params.append("status", status);
   const res = await axios.get(`/api/professor/theses?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
 };
+
+// --- append to src/api/Professor.js ---
+
+export const fetchThesisInvitations = async (id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.get(`/api/professor/theses/${id}/invitations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+export const fetchThesisGrades = async (id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.get(`/api/professor/theses/${id}/grades`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+export const fetchLatestDraft = async (id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.get(`/api/professor/theses/${id}/draft`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+export const getPresentationAnnouncement = async (id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.get(`/api/professor/theses/${id}/announcement`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data; // { text }
+};
+
+/**
+ * Φέρνει λίστες για role=supervisor και role=committee και τις ενώνει.
+ * Το πεδίο `role` το προσθέτουμε client-side για απόδοση στη λίστα.
+ */
+export const fetchManagedThesesBoth = async ({ status } = {}) => {
+  const [asSupervisor, asCommittee] = await Promise.all([
+    fetchManagedTheses({ role: "supervisor", status }),
+    fetchManagedTheses({ role: "committee", status }),
+  ]);
+  return [
+    ...asSupervisor.map(x => ({ ...x, role: "supervisor" })),
+    ...asCommittee.map(x => ({ ...x, role: "committee" })),
+  ].sort((a, b) => (new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0)) || (b.id - a.id));
+};
+
+export const fetchThesisHistory = async (id) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.get(`/api/professor/theses/${id}/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
+
