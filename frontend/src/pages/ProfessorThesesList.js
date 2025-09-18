@@ -20,6 +20,28 @@ const ALL_STATUSES = [
   { key: "completed",        label: "Περατωμένη" },
 ];
 
+// === Μεταφράσεις στα Ελληνικά ===
+const STATUS_LABELS = {
+  available: "Διαθέσιμη",
+  under_assignment: "Υπό ανάθεση",
+  active: "Ενεργή",
+  under_review: "Υπό εξέταση",
+  completed: "Περατωμένη",
+  cancelled: "Ακυρωμένη",
+};
+const ROLE_LABELS = {
+  supervisor: "επιβλέπων/ουσα",
+  committee: "μέλος τριμελούς",
+};
+const INV_STATUS_LABELS = {
+  pending: "σε εκκρεμότητα",
+  accepted: "αποδεκτή",
+  declined: "απορρίφθηκε",
+};
+const tStatus = (s) => STATUS_LABELS[s] ?? s;
+const tRole   = (r) => ROLE_LABELS[r] ?? r;
+const tInv    = (s) => INV_STATUS_LABELS[s] ?? s;
+
 function toCSV(rows) {
   if (!rows?.length) return "";
   const header = Object.keys(rows[0]);
@@ -107,7 +129,8 @@ export default function ProfessorThesesList() {
         ]);
         const okInv   = invitations.status === "fulfilled" ? invitations.value : [];
         const okGrades= grades.status === "fulfilled" ? grades.value : [];
-        const avg     = okGrades.length ? (okGrades.reduce((a, c) => a + Number(c.total || 0), 0) / okGrades.length).toFixed(2) : null;
+        // Μέσος τελικός /10 (άθροισμα κριτηρίων είναι 0–50)
+        const avg     = okGrades.length ? (okGrades.reduce((a, c) => a + Number(c.total || 0), 0) / okGrades.length / 5).toFixed(2) : null;
         const okDraft = draft.status === "fulfilled" ? draft.value : null;
         const okAnn   = announcement.status === "fulfilled" ? announcement.value : null;
         const okHist  = historyResp.status === "fulfilled" ? historyResp.value : [];
@@ -117,82 +140,6 @@ export default function ProfessorThesesList() {
     load();
     return () => { cancelled = true; };
   }, [selected]);
-
-  // === Actions ===
-  const token = localStorage.getItem("token");
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
-
-  async function markUnderReview(thesisId) {
-    try {
-      await axios.patch(`/api/professor/theses/${thesisId}/under-review`, {}, auth);
-      queryClient.setQueryData(["prof-theses-list", role], (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((row) =>
-          row.id === thesisId ? { ...row, status: "under_review" } : row
-        );
-      });
-      setSelected((prev) => (prev && prev.id === thesisId ? { ...prev, status: "under_review" } : prev));
-      queryClient.invalidateQueries({ queryKey: ["prof-theses-list"] });
-      if (!statusSet.has("under_review")) {
-        window.alert('Η κατάσταση έγινε "Υπό εξέταση". Με τα τρέχοντα φίλτρα ίσως να μην εμφανίζεται στη λίστα.');
-      } else {
-        window.alert("Έγινε Υπό Εξέταση");
-      }
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("markUnderReview failed:", e);
-    }
-  }
-
-  async function openGrading(thesisId) {
-    try {
-      await axios.patch(`/api/professor/theses/${thesisId}/grading/open`, {}, auth);
-      window.alert("Η βαθμολόγηση ενεργοποιήθηκε");
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("openGrading failed:", e);
-    }
-  }
-
-  async function cancelAssignment(thesisId, status) {
-    try {
-      if (status === "under_assignment") {
-        await axios.delete(`/api/professor/theses/${thesisId}/assignment`, auth);
-      } else if (status === "active") {
-        const gs_number = window.prompt("Αριθμός Γ.Σ. για ακύρωση ενεργής ΔΕ:");
-        const gs_year = window.prompt("Έτος Γ.Σ.:");
-        if (!gs_number || !gs_year) return;
-        await axios.post(`/api/professor/theses/${thesisId}/cancel-assignment`, { gs_number, gs_year }, auth);
-      } else {
-        window.alert("Η ακύρωση επιτρέπεται μόνο σε υπό ανάθεση ή ενεργή.");
-        return;
-      }
-      window.alert("Η ανάθεση ακυρώθηκε");
-      setSelected(null);
-      queryClient.invalidateQueries({ queryKey: ["prof-theses-list"] });
-      refetch();
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("cancelAssignment failed:", e);
-    }
-  }
-
-  async function publishAnnouncement(thesisId) {
-    try {
-      const text = window.prompt("Κείμενο ανακοίνωσης παρουσίασης:");
-      if (!text) return;
-      await axios.post(`/api/professor/theses/${thesisId}/announcement`, { text }, auth);
-      window.alert("Η ανακοίνωση δημοσιεύτηκε");
-      setDetails(prev => ({ ...(prev || {}), announcement: { text } }));
-    } catch (e) {
-      const msg = e?.response?.data?.error || e.message;
-      window.alert("Αποτυχία: " + msg);
-      console.error("publishAnnouncement failed:", e);
-    }
-  }
 
   return (
     <div className="page">
@@ -260,17 +207,27 @@ export default function ProfessorThesesList() {
 
       {/* Details card */}
       {selected && (
-        <div className="card">
+        <div className="card card--wide">
           <div className="card-header">
             <div>{selected.title}</div>
-            <button className="btn btn-light" onClick={() => setSelected(null)}>Κλείσιμο</button>
+            <div>
+              <button
+                className="btn"
+                onClick={() => navigate(`/manage-theses?open=${selected.id}&role=${selected.role === "committee" ? "committee" : "supervisor"}`)}
+              >
+                Διαχείριση
+              </button>
+              <button className="btn btn-light" onClick={() => setSelected(null)} style={{ marginLeft: 8 }}>
+                Κλείσιμο
+              </button>
+            </div>
           </div>
           <div className="card-body">
             <p className="mb-0">
               <strong>Φοιτητής/τρια:</strong> {selected.student_name} ({selected.student_email})<br/>
               <strong>Κατάσταση:</strong>{" "}
-              <span className={"status-pill status-" + selected.status}>{selected.status}</span>
-              &nbsp;|&nbsp; <strong>Ρόλος:</strong> {selected.role}<br/>
+              <span className={"status-pill status-" + selected.status}>{tStatus(selected.status)}</span>
+              &nbsp;|&nbsp; <strong>Ρόλος:</strong> {tRole(selected.role)}<br/>
               {selected.assigned_at && (<><strong>Ανάθεση:</strong> {new Date(selected.assigned_at).toLocaleString("el-GR")} <br/></>)}
               {selected.pdf_file && (
                 <>
@@ -283,29 +240,6 @@ export default function ProfessorThesesList() {
               )}
             </p>
 
-            {/* Action buttons — μόνο για επιβλέποντα (2×2 grid) */}
-            {selected.role === "supervisor" && (
-  <div className="thesis-actions">
-    <button className="btn" onClick={() => markUnderReview(selected.id)} disabled={selected.status !== "active"}>
-      Μετάβαση σε «Υπό Εξέταση»
-    </button>
-
-    <button className="btn" onClick={() => openGrading(selected.id)} disabled={selected.status !== "under_review"}>
-      Ενεργοποίηση Βαθμολόγησης
-    </button>
-
-    <button className="btn btn-secondary" onClick={() => cancelAssignment(selected.id, selected.status)}
-      disabled={!(selected.status === "under_assignment" || selected.status === "active")}>
-      Ακύρωση Ανάθεσης
-    </button>
-
-    <button className="btn" onClick={() => publishAnnouncement(selected.id)}>
-      Δημοσίευση Ανακοίνωσης
-    </button>
-  </div>
-)}
-
-
             {/* Committee / Invitations */}
             <section className="section">
               <h4>Τριμελής</h4>
@@ -316,7 +250,7 @@ export default function ProfessorThesesList() {
                   <ul>
                     {details.invitations.map(inv => (
                       <li key={inv.id}>
-                        {inv.professor_name} &lt;{inv.professor_email}&gt; — {inv.status}
+                        {inv.professor_name} &lt;{inv.professor_email}&gt; — {tInv(inv.status)}
                         {inv.invited_at && ` (πρόσκληση: ${new Date(inv.invited_at).toLocaleString("el-GR")})`}
                         {inv.responded_at && ` (απάντηση: ${new Date(inv.responded_at).toLocaleString("el-GR")})`}
                       </li>
@@ -328,33 +262,43 @@ export default function ProfessorThesesList() {
 
             {/* Grades */}
             <section className="section">
-              <h4>Βαθμολογίες</h4>
+              <h4>Βαθμοί</h4>
               <div className="section-content">
                 {Array.isArray(details.grades) && details.grades.length > 0 ? (
-                  <>
-                    <p><strong>Μέσος τελικός:</strong> {details.avgTotal}</p>
-                    <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
-                      <thead>
-                        <tr>
-                          <th>Μέλος</th><th>Σύνολο</th><th>Clarity</th><th>Originality</th><th>Methodology</th><th>Writing</th><th>Presentation</th>
+                 <>
+                  <p style={{ marginTop: 10 }}>
+                    <strong>Μέσος τελικός:</strong> {details.avgTotal} / 10
+                  </p>
+                  <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th>Καθηγητής</th>
+                        <th>Συγγραφή</th>
+                        <th>Παρουσίαση</th>
+                        <th>Μεθοδολογία</th>
+                        <th>Πρωτοτυπία</th>
+                        <th>Σαφήνεια</th>
+                        <th>Σύνολο</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {details.grades.map(g => (
+                        <tr key={g.id}>
+                          <td>{g.professor_name}</td>
+                          <td>{g.writing}</td>
+                          <td>{g.presentation}</td>
+                          <td>{g.methodology}</td>
+                          <td>{g.originality}</td>
+                          <td>{g.clarity}</td>
+                          <td>{g.total}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {details.grades.map(g => (
-                          <tr key={g.professor_id}>
-                            <td>{g.professor_name}</td>
-                            <td>{g.total}</td>
-                            <td>{g.clarity}</td>
-                            <td>{g.originality}</td>
-                            <td>{g.methodology}</td>
-                            <td>{g.writing}</td>
-                            <td>{g.presentation}</td>
-                          </tr>
-                        ))}
+                      ))}
                       </tbody>
                     </table>
                   </>
-                ) : <p>—</p>}
+                ) : (
+                  <p style={{ marginTop: 10 }}>Δεν υπάρχουν καταχωρημένοι βαθμοί.</p>
+                )}
               </div>
             </section>
 
@@ -392,7 +336,7 @@ export default function ProfessorThesesList() {
                     {details.history.map(h => (
                       <li key={h.id} style={{ marginBottom: 8 }}>
                         <div>
-                          <strong>{h.from_status ?? "—"}</strong> → <strong>{h.to_status}</strong>
+                          <strong>{h.from_status ? tStatus(h.from_status) : "—"}</strong> → <strong>{tStatus(h.to_status)}</strong>
                           <span style={{ color: "#6b7280" }}>
                             {" • "}{new Date(h.created_at).toLocaleString("el-GR")}
                             {h.actor_name && ` • ${h.actor_name}`}
@@ -421,13 +365,26 @@ export default function ProfessorThesesList() {
 }
 
 function FragmentRow({ row, onView }) {
+  const navigate = useNavigate();
+
+  const roleParam = row.role === "committee" ? "committee" : "supervisor";
+
   return (
     <>
       <div className="ptl-td" title={row.title}>{row.title}</div>
       <div className="ptl-td">{row.student_name} <small>({row.student_email})</small></div>
-      <div className="ptl-td"><span className={"status-pill status-" + row.status}>{row.status}</span></div>
-      <div className="ptl-td col-role">{row.role}</div>
-      <div className="ptl-td"><button className="btn btn-light" onClick={onView}>Λεπτομέρειες</button></div>
+      <div className="ptl-td"><span className={"status-pill status-" + row.status}>{tStatus(row.status)}</span></div>
+      <div className="ptl-td col-role">{tRole(row.role)}</div>
+      <div className="ptl-td">
+        <button className="btn btn-light" onClick={onView}>Λεπτομέρειες</button>
+        <button
+          className="btn"
+          style={{ marginLeft: 8 }}
+          onClick={() => navigate(`/professor/manage-theses?open=${row.id}&role=${row.role}`)}
+        >
+          Διαχείριση
+        </button>
+      </div>
     </>
   );
 }

@@ -127,4 +127,12 @@ export const fetchThesisHistory = async (id) => {
   return res.data;
 };
 
+export const submitThesisGrade = async (id, grade) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.post(`/api/professor/theses/${id}/grades`, grade, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
 
