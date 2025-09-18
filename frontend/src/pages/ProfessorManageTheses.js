@@ -238,19 +238,22 @@ export default function ProfessorManageTheses() {
 const publishAnnouncement = async () => {
   const txt = announcementText.trim();
   if (!txt) return alert("Δεν υπάρχει κείμενο ανακοίνωσης.");
+  if (!openId) return alert("Δεν βρέθηκε ΔΕ.");
   setPublishing(true);
   try {
     const { data } = await axios.post(
-  `${API_BASE}/api/professor/theses/${openId}/announcement`,
-  { text: announcementText.trim() },   
-  );
-    alert("Η ανακοίνωση δημοσιεύτηκε." + (data?.id ? ` (#${data.id})` : ""));
+      `${API_BASE}/api/professor/theses/${openId}/announcement`,
+      { text: txt },
+      { headers } 
+    );
+    alert(data?.message || "Η ανακοίνωση δημοσιεύτηκε.");
   } catch (e) {
     alert(e?.response?.data?.error || "Αποτυχία δημοσίευσης.");
   } finally {
     setPublishing(false);
   }
 };
+
 
 
   const openGradingAction = async () => {
