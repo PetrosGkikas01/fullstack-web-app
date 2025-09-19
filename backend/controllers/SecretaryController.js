@@ -354,6 +354,13 @@ exports.completeIfEligible = async (req, res) => {
       [thesisId]
     );
 
+await conn.query(
+  `INSERT INTO thesis_status_history
+   (diplomatikhergasia_id, from_status, to_status, actor_role, actor_professor_id, created_at)
+   VALUES (?, ?, ?, 'secretary', NULL, NOW())`,
+  [thesisId, d.status, 'completed']
+);
+
     await conn.commit();
     return res.json({
       message: "Η ΔΕ περατώθηκε επιτυχώς.",
