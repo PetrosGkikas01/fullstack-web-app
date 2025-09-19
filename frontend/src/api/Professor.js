@@ -70,8 +70,6 @@ export const fetchManagedTheses = async ({ role = "supervisor", status } = {}) =
   return res.data;
 };
 
-// --- append to src/api/Professor.js ---
-
 export const fetchThesisInvitations = async (id) => {
   const token = localStorage.getItem("token");
   const res = await axios.get(`/api/professor/theses/${id}/invitations`, {
@@ -101,13 +99,9 @@ export const getPresentationAnnouncement = async (id) => {
   const res = await axios.get(`/api/professor/theses/${id}/announcement`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return res.data; // { text }
+  return res.data; 
 };
 
-/**
- * Φέρνει λίστες για role=supervisor και role=committee και τις ενώνει.
- * Το πεδίο `role` το προσθέτουμε client-side για απόδοση στη λίστα.
- */
 export const fetchManagedThesesBoth = async ({ status } = {}) => {
   const [asSupervisor, asCommittee] = await Promise.all([
     fetchManagedTheses({ role: "supervisor", status }),

@@ -2,11 +2,7 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-/* -----------------------------------------------------------------------------
- * Helpers
- * ---------------------------------------------------------------------------*/
 
-// Επιτρέπει πρόσβαση αν ο καθηγητής είναι επιβλέπων ή accepted μέλος τριμελούς
 async function profHasAccessToThesis(thesisId, professorId) {
   const [[row]] = await db.query(
     `SELECT d.id
@@ -23,7 +19,6 @@ async function profHasAccessToThesis(thesisId, professorId) {
   return !!row;
 }
 
-// Καταγραφή αλλαγής κατάστασης (δέχεται είτε transaction conn είτε db)
 async function logStatusChange(runner, thesisId, fromStatus, toStatus, actorProfessorId = null, actorRole = "professor", note = null) {
   const exec = runner && runner.query ? runner : db;
   const sql = `INSERT INTO thesis_status_history
@@ -32,9 +27,6 @@ async function logStatusChange(runner, thesisId, fromStatus, toStatus, actorProf
   await exec.query(sql, [thesisId, fromStatus, toStatus, actorRole, actorProfessorId, note]);
 }
 
-/* =========================
- * Auth
- * ======================= */
 
 exports.register = async (req, res) => {
   const { name, email, password, specialty, is_admin } = req.body;
@@ -72,9 +64,7 @@ exports.login = async (req, res) => {
   }
 };
 
-/* =========================
- * Topics (CRUD)
- * ======================= */
+
 
 exports.createTopic = async (req, res) => {
   const { title, description } = req.body;
@@ -164,9 +154,6 @@ exports.deleteTopic = async (req, res) => {
   }
 };
 
-/* =========================
- * Ανάθεση θέματος σε φοιτητή
- * ======================= */
 
 exports.assignTopicToStudent = async (req, res) => {
   const professor_id = req.user.id;
@@ -191,7 +178,7 @@ exports.assignTopicToStudent = async (req, res) => {
       "UPDATE diplomatikhergasia SET student_id = ?, status = 'under_assignment', assigned_at = NOW() WHERE id = ?",
       [student_id, topic_id]
     );
-    // timeline
+    
     await logStatusChange(db, topic_id, "available", "under_assignment", professor_id, "professor", `Assign to student ${student_id}`);
 
     res.json({ message: "✅ Το θέμα ανατέθηκε επιτυχώς!" });
@@ -201,9 +188,6 @@ exports.assignTopicToStudent = async (req, res) => {
   }
 };
 
-/* =========================
- * Προσκλήσεις τριμελούς (ως μέλος)
- * ======================= */
 
 exports.listMyCommitteeInvitations = async (req, res) => {
   try {
@@ -282,13 +266,11 @@ exports.respondToCommitteeInvitation = async (req, res) => {
         [thesisId]
       );
       if ((acc[0]?.c || 0) >= 2) {
-        // πριν αλλάξεις, (προαιρετικά) διάβασε το προηγούμενο status
         const [[prev]] = await conn.query(`SELECT status FROM diplomatikhergasia WHERE id=?`, [thesisId]);
         await conn.query(`UPDATE diplomatikhergasia SET status='active' WHERE id=?`, [thesisId]);
-        // timeline
         await logStatusChange(conn, thesisId, (prev && prev.status) || "under_assignment", "active", null, "system", "Accepted committee (2/2)");
 
-        // ακύρωσε pending υπόλοιπες
+        
         try {
           await conn.query(
             `UPDATE committee_invitation
@@ -298,7 +280,7 @@ exports.respondToCommitteeInvitation = async (req, res) => {
             [thesisId]
           );
         } catch (e) {
-          // διαφοροποίηση 'canceled'/'cancelled' αν χρειαστεί
+          
           await conn.query(
             `UPDATE committee_invitation
                 SET status='canceled',
@@ -321,13 +303,10 @@ exports.respondToCommitteeInvitation = async (req, res) => {
   }
 };
 
-/* =========================
- * Διαχείριση ΔΕ (λίστες/προσκλήσεις/ακύρωση)
- * ======================= */
 
 exports.listManagedTheses = async (req, res) => {
   const professorId = req.user.id;
-  const role = String(req.query.role || "supervisor").toLowerCase(); // supervisor | committee | both
+  const role = String(req.query.role || "supervisor").toLowerCase(); 
   const statusCsv = String(req.query.status || "").trim();
   const statuses = statusCsv ? statusCsv.split(",").map(s => s.trim()).filter(Boolean) : [];
 
@@ -365,7 +344,7 @@ exports.listManagedTheses = async (req, res) => {
       return res.json(rows);
     }
 
-    // both
+  
     const [rowsS] = await db.query(
       `SELECT d.id, d.title, d.status, d.assigned_at, d.pdf_file, d.grading_open,
               s.id AS student_id, s.name AS student_name, s.email AS student_email, 'supervisor' AS role
@@ -646,7 +625,7 @@ exports.submitGrade = async (req, res) => {
 exports.listGrades = async (req, res) => {
   try {
     const thesisId = Number(req.params.id);
-    // αν θέλεις να περιορίσεις την πρόσβαση, μπορείς να καλέσεις profHasAccessToThesis εδώ
+    
     const [rows] = await db.query(
       `SELECT tg.professor_id, p.name AS professor_name,
               tg.clarity, tg.originality, tg.methodology, tg.writing, tg.presentation, tg.total,
@@ -664,9 +643,7 @@ exports.listGrades = async (req, res) => {
   }
 };
 
-/* =========================
- * Draft & Ανακοίνωση παρουσίασης (ορατά και σε committee)
- * ======================= */
+ 
 
 exports.getThesisLatestDraft = async (req, res) => {
   try {
@@ -697,9 +674,7 @@ exports.getThesisLatestDraft = async (req, res) => {
   }
 };
 
-// Επιστρέφει το κείμενο ανακοίνωσης παρουσίασης:
-// 1) από thesis_presentation (επίσημη εγγραφή), αλλιώς
-// 2) από announcement (τελευταία με τίτλο "Παρουσίαση: {τίτλος ΔΕ}%")
+
 exports.getPresentationAnnouncement = async (req, res) => {
   try {
     const professorId = req.user.id;
@@ -738,7 +713,7 @@ ${place}
       return res.json({ text });
     }
 
-    // Fallback: από announcement — schema με body/created_at/created_by (χωρίς thesis_id)
+    
     const [[thesis]] = await db.query(`SELECT title FROM diplomatikhergasia WHERE id=? LIMIT 1`, [thesisId]);
     if (!thesis) return res.status(404).json({ error: "Η ΔΕ δεν βρέθηκε." });
 
@@ -769,7 +744,7 @@ exports.publishAnnouncement = async (req, res) => {
     if (!Number.isInteger(thesisId)) return res.status(400).json({ error: "Μη έγκυρο id" });
     if (!text) return res.status(400).json({ error: "Κενό κείμενο ανακοίνωσης." });
 
-    // μόνο ο επιβλέπων μπορεί να δημοσιεύσει
+    
     const [[own]] = await db.query(
       `SELECT id, title FROM diplomatikhergasia WHERE id=? AND professor_id=? LIMIT 1`,
       [thesisId, professorId]
@@ -778,7 +753,7 @@ exports.publishAnnouncement = async (req, res) => {
 
     const title = customTitle || `Παρουσίαση: ${own.title}`;
 
-    // Συμβατότητα με διαφορετικά schemas του announcement
+    
     try {
       await db.query(
         `INSERT INTO announcement (title, text, thesis_id, published_by_professor_id)
@@ -808,10 +783,7 @@ exports.publishAnnouncement = async (req, res) => {
     res.status(500).json({ error: "Σφάλμα δημοσίευσης ανακοίνωσης" });
   }
 };
-
-/* =========================
- * Timeline (ιστορικό καταστάσεων)
- * ======================= */
+ 
 
 exports.getThesisStatusHistory = async (req, res) => {
   try {

@@ -20,7 +20,7 @@ const ALL_STATUSES = [
   { key: "completed",        label: "Περατωμένη" },
 ];
 
-// === Μεταφράσεις στα Ελληνικά ===
+
 const STATUS_LABELS = {
   available: "Διαθέσιμη",
   under_assignment: "Υπό ανάθεση",
@@ -60,7 +60,7 @@ function download(name, text, type = "text/plain") {
 }
 
 export default function ProfessorThesesList() {
-  const [role, setRole] = useState("both"); // both | supervisor | committee
+  const [role, setRole] = useState("both"); 
   const [statusSet, setStatusSet] = useState(() => new Set(ALL_STATUSES.map(s => s.key)));
   const [selected, setSelected] = useState(null);
   const [details, setDetails] = useState({
@@ -75,7 +75,7 @@ export default function ProfessorThesesList() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Πάντα φέρνουμε "όλες" και φιλτράρουμε client-side
+  
   const { data: rawList, isLoading, error, refetch } = useQuery({
     queryKey: ["prof-theses-list", role],
     queryFn: () =>
@@ -111,7 +111,7 @@ export default function ProfessorThesesList() {
     }));
   }, [visible]);
 
-  // Φόρτωση λεπτομερειών
+  
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -129,7 +129,7 @@ export default function ProfessorThesesList() {
         ]);
         const okInv   = invitations.status === "fulfilled" ? invitations.value : [];
         const okGrades= grades.status === "fulfilled" ? grades.value : [];
-        // Μέσος τελικός /10 (άθροισμα κριτηρίων είναι 0–50)
+        
         const avg     = okGrades.length ? (okGrades.reduce((a, c) => a + Number(c.total || 0), 0) / okGrades.length / 5).toFixed(2) : null;
         const okDraft = draft.status === "fulfilled" ? draft.value : null;
         const okAnn   = announcement.status === "fulfilled" ? announcement.value : null;
@@ -145,7 +145,7 @@ export default function ProfessorThesesList() {
     <div className="page">
       <h2 className="page-title">Λίστα διπλωματικών</h2>
 
-      {/* Toolbar */}
+      
       <div className="toolbar">
         <div>
           <label><strong>Ρόλος:</strong>{" "}</label>
@@ -188,7 +188,7 @@ export default function ProfessorThesesList() {
         </div>
       </div>
 
-      {/* Grid list */}
+      
       {isLoading && <p>Φόρτωση...</p>}
       {error && <p>Σφάλμα φόρτωσης.</p>}
       {!isLoading && !error && (
@@ -205,7 +205,7 @@ export default function ProfessorThesesList() {
         </div>
       )}
 
-      {/* Details card */}
+      
       {selected && (
         <div className="card card--wide">
           <div className="card-header">
@@ -240,7 +240,7 @@ export default function ProfessorThesesList() {
               )}
             </p>
 
-            {/* Committee / Invitations */}
+            
             <section className="section">
               <h4>Τριμελής</h4>
               <div className="section-content">
@@ -260,7 +260,7 @@ export default function ProfessorThesesList() {
               </div>
             </section>
 
-            {/* Grades */}
+            
             <section className="section">
               <h4>Βαθμοί</h4>
               <div className="section-content">
@@ -302,7 +302,7 @@ export default function ProfessorThesesList() {
               </div>
             </section>
 
-            {/* Latest draft */}
+            
             <section className="section">
               <h4>Τελευταίο draft</h4>
               <div className="section-content">
@@ -317,7 +317,7 @@ export default function ProfessorThesesList() {
               </div>
             </section>
 
-            {/* Announcement text */}
+            
             <section className="section">
               <h4>Κείμενο ανακοίνωσης παρουσίασης (αν υπάρχει)</h4>
               <div className="section-content">
@@ -327,7 +327,7 @@ export default function ProfessorThesesList() {
               </div>
             </section>
 
-            {/* Timeline */}
+            
             <section className="section">
               <h4>Χρονολόγιο κατάστασης</h4>
               <div className="section-content">
@@ -356,7 +356,7 @@ export default function ProfessorThesesList() {
         </div>
       )}
 
-      {/* Footer with Back button (κάτω-κάτω) */}
+      
       <div className="page-footer">
         <button className="back-button" onClick={() => navigate(-1)}>← Πίσω</button>
       </div>

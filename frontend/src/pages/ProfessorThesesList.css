@@ -1,21 +1,16 @@
-/* ===== Page layout (βασικό) ===== */
 .page { max-width: 1200px; margin: 0 auto; padding: 1rem; }
 .page-title { margin: .25rem 0 .75rem; }
 .page-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #eee; }
 .mb-0 { margin-bottom: 0 !important; }
 
-/* === Όταν ανοίγει wide κάρτα, άπλωσε ΜΟΝΟ τότε το frame === */
-:root { --details-max-width: 1600px; } /* ρυθμίζεις εδώ πόσο φαρδύ θέλεις */
+
+:root { --details-max-width: 1600px; } 
 @supports selector(.page:has(.card--wide)) {
   .page:has(.card--wide) { max-width: var(--details-max-width) !important; }
 }
-/* Fallback για παλιούς browsers (αν το χρειαστείς, βγάλ’ το από σχόλιο)
-@supports not selector(.page:has(.card--wide)) {
-  .page { max-width: var(--details-max-width) !important; }
-}
-*/
 
-/* ===== Buttons ===== */
+
+
 .back-button,
 .btn {
   display: inline-block;
@@ -47,7 +42,7 @@
 .back-button:focus-visible { background: #0b5ed7; border-color: #0a58ca; color: #fff; }
 .back-button { margin-top: 6px; }
 
-/* ===== Toolbar (filters + exports) ===== */
+
 .toolbar {
   display: flex;
   gap: .75rem;
@@ -64,7 +59,7 @@
 .status-filters label { margin-right: 12px; }
 .export-actions { margin-left: auto; display: flex; gap: .5rem; }
 
-/* ===== List grid ===== */
+
 .ptl-grid { 
   display: grid;
   grid-template-columns: 2fr 1.2fr 1fr 1fr 120px;
@@ -75,7 +70,7 @@
 .ptl-th { font-weight: 600; padding: .35rem 0; }
 .ptl-td { padding: .35rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ===== Status pills ===== */
+
 .status-pill {
   display: inline-block;
   padding: .2rem .5rem;
@@ -90,7 +85,7 @@
 .status-under_review    { background: #fff3cd; color: #856404; border-color: #ffe8a1; }
 .status-completed       { background: #212529; color: #f8f9fa; border-color: #212529; }
 
-/* ===== Details card ===== */
+
 .card {
   width: 100%;
   margin-top: 24px;
@@ -107,14 +102,14 @@
 }
 .card-body { padding: .8rem .9rem; }
 
-/* === Λίγο έξτρα «άπλωμα» μόνο στην wide κάρτα, χωρίς full-bleed === */
+
 .card--wide { margin-left: calc(-1rem); margin-right: calc(-1rem); }
 .card--wide .card-body { padding-left: 1.25rem; padding-right: 1.25rem; }
-/* Ο πίνακας στις λεπτομέρειες να πιάνει όλο το πλάτος */
+
 .card--wide .section-content { overflow-x: visible; }
 .card--wide .section-content table { width: 100%; max-width: 100%; table-layout: auto; }
 
-/* ===== Actions in details — 2×2 grid ===== */
+
 .thesis-actions {
   display: grid !important;
   grid-template-columns: 1fr 1fr;
@@ -136,7 +131,7 @@
 .thesis-actions .btn:nth-child(3) { grid-column: 1; grid-row: 2; }
 .thesis-actions .btn:nth-child(4) { grid-column: 2; grid-row: 2; }
 
-/* ===== Sections μέσα στην κάρτα ===== */
+
 .section { margin-top: 1rem; }
 .section h4 { margin: .25rem 0 .5rem; font-weight: 600; color: #111827; }
 .section-content {
@@ -144,11 +139,11 @@
   background: #fafafa;
   border-radius: 8px;
   padding: .6rem .7rem;
-  overflow-x: visible; /* χωρίς οριζόντιο scroll όταν υπάρχει χώρος */
+  overflow-x: visible; 
 }
 .section-content table { width: 100%; max-width: 100%; }
 
-/* ===== Grade form (όψη ίδια με Διαχείριση) ===== */
+
 .grade-form { display: flex; flex-direction: column; gap: 8px; }
 .grade-row {
   display: grid;
@@ -177,11 +172,11 @@
 .grade-total { margin-left: auto; font-weight: 600; color: #111827; }
 .grade-hint { color: #6b7280; font-size: 13px; }
 
-/* ===== Links μέσα στην κάρτα ===== */
+
 .card-body a { color: #0d6efd; text-decoration: none; }
 .card-body a:hover { text-decoration: underline; }
 
-/* ===== Responsive ===== */
+
 @media (max-width: 900px) {
   .ptl-grid { grid-template-columns: 1.8fr 1.2fr 1fr .9fr 100px; }
 }
@@ -200,21 +195,19 @@
   .grade-row { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* === ΜΟΝΟ η κάρτα λεπτομερειών να γίνεται φαρδύτερη όταν είναι ανοικτή === */
 
-/* Ρύθμισε εδώ πόσο έξτρα πλάτος θες (δεξιά) πάνω από το 100% του container */
 :root {
-  --card-extra-width: 25px; /* π.χ. 240px, 400px, κ.λπ. */
+  --card-extra-width: 25px; 
 }
 
-/* Η wide κάρτα απλώνεται προς τα δεξιά, χωρίς να αλλάζει η σελίδα */
+
 .card.card--wide {
-  max-width: none;                               /* μην περιορίζεται από το parent */
+  max-width: none;                               
   width: min(calc(100% + var(--card-extra-width)), 96vw);
-  /* κρατάμε την αριστερή στοίχιση όπως είναι, και επεκτεινόμαστε δεξιά */
+  
 }
 
-/* Ο πίνακας μέσα στην κάρτα να χρησιμοποιεί όλο το νέο πλάτος, χωρίς εσωτερικό scroll */
+
 .card.card--wide .section-content { overflow-x: visible; }
 .card.card--wide .section-content table {
   width: 100%;
@@ -222,7 +215,7 @@
   table-layout: auto;
 }
 
-/* Προστασία για πιο μικρές οθόνες: όταν δεν υπάρχει χώρος, μην προσπαθεί να απλωθεί */
+
 @media (max-width: 1280px) {
   .card.card--wide { width: 100%; }
 }

@@ -48,7 +48,7 @@ const CommitteeInvitations = () => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [filter]);
 
   const respond = async (invitation_id, action) => {
