@@ -479,9 +479,6 @@ exports.cancelAssignment = async (req, res) => {
   }
 };
 
-/* =========================
- * Σημειώσεις καθηγητή
- * ======================= */
 
 exports.addNote = async (req, res) => {
   try {
@@ -523,9 +520,6 @@ exports.listMyNotes = async (req, res) => {
   }
 };
 
-/* =========================
- * Καταστάσεις/βαθμολόγηση
- * ======================= */
 
 exports.markUnderReview = async (req, res) => {
   try {
